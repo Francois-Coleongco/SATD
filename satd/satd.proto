@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package satd; // Adjust package name to your project
+
+option go_package = "server-agent-threat-detection/satd/v1";
+
+message NetDat { bytes payload = 1; }
+
+message RecConf {
+  bool success = 1;
+  string message = 2;
+  int64 bytes_received = 3;
+}
+
+service ServerFeeder {
+  rpc Feed(stream NetDat) returns (RecConf) {}
+}
