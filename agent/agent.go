@@ -39,6 +39,10 @@ func start_data_stream(client pb.ServerFeederClient) {
 		log.Fatalf("error creating stream from client in start_data_stream, error thrown: %s\n", err)
 	}
 
+	lt := []byte{byte(handle.LinkType())}
+
+	stream.Send(&pb.NetDat{Payload: lt})
+
 	for {
 		data, ci, err := handle.ReadPacketData()
 

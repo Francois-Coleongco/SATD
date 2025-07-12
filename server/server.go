@@ -10,6 +10,8 @@ import (
 
 	pb "server-agent-threat-detection/satd/v1"
 
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -24,10 +26,18 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 
 	totalBytes := 0
 
+	lt_dat, err := stream.Recv()
+
+	linkType := layers.LinkType(lt_dat.GetPayload()[0])
+
+	if err != nil {
+		log.Printf("error reading link type %s\n", err)
+	}
+
 	for {
 		netDat, err := stream.Recv()
 		if err == io.EOF {
-			log.Fatalf("end of stream")
+			log.Println("end of stream")
 			break
 		}
 
@@ -36,17 +46,19 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 			return err
 		}
 		log_chunk := netDat.GetPayload()
+
+		packet := gopacket.NewPacket(log_chunk, linkType, gopacket.Default)
+		// need to index packet meta data into elastic search (use docker to spawn it)
+		fmt.Println("received: ", packet)
 		totalBytes += len(log_chunk)
-		fmt.Println(string(log_chunk))
 	}
 
-	msg := fmt.Sprintln("once processed, this message should tell the client whether there is a potential attack and take subsequent measures to quarantine/kill the connection / find the source etcc etc")
-
-	return stream.SendAndClose(&pb.RecConf{Success: true, Message: msg, BytesReceived: int64(totalBytes)})
-
+	return stream.SendAndClose(&pb.RecConf{Success: true, BytesReceived: int64(totalBytes)})
 }
 
 func main() {
+
+	// spawn the elastic search query and analysis go routine at the beginning.
 
 	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
 

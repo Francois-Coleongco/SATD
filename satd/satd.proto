@@ -8,8 +8,7 @@ message NetDat { bytes payload = 1; }
 
 message RecConf {
   bool success = 1;
-  string message = 2;
-  int64 bytes_received = 3;
+  int64 bytes_received = 2;
 }
 
 service ServerFeeder {
