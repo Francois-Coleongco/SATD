@@ -5,48 +5,67 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
-	"log"
-	"os"
-	"time"
-
+	"fmt"
+	"github.com/google/gopacket/pcap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"log"
+	"os"
 
 	pb "server-agent-threat-detection/satd/v1"
 )
 
 var (
-	addr = flag.String("addr", "localhost:8080", "the address to connect to")
-	id   = 0111
+	id = 0111
+
+	interfaceName = flag.String("interface_name", "enp0s3", "give a valid network interface (hint: run `ip a`)")
+	MTU           = flag.Int64("MTU", 1500, "give the MTU of your network interface")                                                   // 1500 default ethernet
+	isPromiscuous = flag.Bool("promiscuous_mode", false, "set promiscuous mode to true if you wish to see packets not for your device") // 1500 default ethernet
+
 )
 
-func start_data_stream(client pb.ServerFeederClient, to_send [][]byte) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20) // should be ample time to send a chunk
-	defer cancel()
+func start_data_stream(client pb.ServerFeederClient) {
+	ctx := context.Background() // should be ample time to send a chunk
+
+	handle, err := pcap.OpenLive(*interfaceName, int32(*MTU), *isPromiscuous, pcap.BlockForever)
+
+	if err != nil {
+		log.Fatalf("error starting packet capture in pcap.OpenLive, error thrown: %s\n", err)
+	}
 
 	stream, err := client.Feed(ctx)
 
 	if err != nil {
-		log.Fatalf("error creating stream from client in start_data_stream, error thrown: %s", err)
+		log.Fatalf("error creating stream from client in start_data_stream, error thrown: %s\n", err)
 	}
 
-	for _, dat := range to_send {
-		err := stream.Send(&pb.NetDat{Payload: dat})
+	for {
+		data, ci, err := handle.ReadPacketData()
+
 		if err != nil {
-			log.Fatalf("error occurred during stream of to_send in start_data_stream")
+			log.Printf("couldn't read  this packet %s\n", err)
+		}
+
+		fmt.Println(ci)
+
+		err = stream.Send(&pb.NetDat{Payload: data})
+		if err != nil {
+			log.Printf("error occurred during stream of to_send in start_data_stream, error thrown: %s\n", err)
+			break
 		}
 	}
 
 	r, err := stream.CloseAndRecv()
 
 	if err != nil {
-		log.Fatalf("failure in stream.CloseAndRecv(), error thrown: ", err)
+		log.Printf("failure in stream.CloseAndRecv(), error thrown: %s\n", err)
 	}
 
 	log.Printf("stream summary %v\n", r)
 }
 
 func main() {
+	flag.Parse()
 	caCert, err := os.ReadFile("cert.pem")
 
 	if err != nil {
@@ -71,13 +90,6 @@ func main() {
 
 	c := pb.NewServerFeederClient(conn)
 
-	var dummy_data = [][]byte{
-		[]byte("i bought a cat"),
-		[]byte("i have a cat"),
-		[]byte("i had a cat"),
-		[]byte("cry"),
-	}
-
-	start_data_stream(c, dummy_data)
+	start_data_stream(c)
 
 }

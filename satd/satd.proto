@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package satd; // Adjust package name to your project
 
-option go_package = "server-agent-threat-detection/satd/v1";
+option go_package = "satd/v1";
 
 message NetDat { bytes payload = 1; }
 

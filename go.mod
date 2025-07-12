@@ -3,6 +3,7 @@ module server-agent-threat-detection
 go 1.24.5
 
 require (
+	github.com/google/gopacket v1.1.19
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
 )

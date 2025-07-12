@@ -32,7 +32,7 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 		}
 
 		if err != nil {
-			log.Fatalf("error receiving netDat, error thrown: %s", err)
+			log.Printf("error receiving netDat, error thrown: %s", err)
 			return err
 		}
 		log_chunk := netDat.GetPayload()
@@ -47,7 +47,9 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 }
 
 func main() {
+
 	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
+
 	if err != nil {
 		log.Fatalf("failed to load keypair, error thrown: %s", err)
 	}

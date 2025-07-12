@@ -24,7 +24,6 @@ const (
 type NetDat struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Payload       []byte                 `protobuf:"bytes,1,opt,name=payload,proto3" json:"payload,omitempty"`
-	SenderId      string                 `protobuf:"bytes,2,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -64,13 +63,6 @@ func (x *NetDat) GetPayload() []byte {
 		return x.Payload
 	}
 	return nil
-}
-
-func (x *NetDat) GetSenderId() string {
-	if x != nil {
-		return x.SenderId
-	}
-	return ""
 }
 
 type RecConf struct {
@@ -137,10 +129,9 @@ var File_satd_satd_proto protoreflect.FileDescriptor
 
 const file_satd_satd_proto_rawDesc = "" +
 	"\n" +
-	"\x0fsatd/satd.proto\x12\x04satd\"?\n" +
+	"\x0fsatd/satd.proto\x12\x04satd\"\"\n" +
 	"\x06NetDat\x12\x18\n" +
-	"\apayload\x18\x01 \x01(\fR\apayload\x12\x1b\n" +
-	"\tsender_id\x18\x02 \x01(\tR\bsenderId\"d\n" +
+	"\apayload\x18\x01 \x01(\fR\apayload\"d\n" +
 	"\aRecConf\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12%\n" +
