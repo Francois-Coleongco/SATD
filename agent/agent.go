@@ -1,18 +1,23 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/gob"
 	"flag"
 	"fmt"
-	"github.com/google/gopacket/pcap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"log"
 	"os"
 
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/pcap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+
 	pb "server-agent-threat-detection/satd/v1"
+	"server-agent-threat-detection/types"
 )
 
 var (
@@ -39,20 +44,53 @@ func start_data_stream(client pb.ServerFeederClient) {
 		log.Fatalf("error creating stream from client in start_data_stream, error thrown: %s\n", err)
 	}
 
-	lt := []byte{byte(handle.LinkType())}
+	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 
-	stream.Send(&pb.NetDat{Payload: lt})
-
-	for {
-		data, ci, err := handle.ReadPacketData()
+	for packet := range packetSource.Packets() {
 
 		if err != nil {
 			log.Printf("couldn't read  this packet %s\n", err)
 		}
 
-		fmt.Println(ci)
+		fmt.Println("fucking hell")
 
-		err = stream.Send(&pb.NetDat{Payload: data})
+		netLayer := packet.NetworkLayer()
+
+		var dstIP string = "--"
+		var srcIP string = "--"
+		var dstPort string = "--"
+		var srcPort string = "--"
+		var protocol string = "--"
+
+		if netLayer != nil {
+			dstIP = netLayer.NetworkFlow().Dst().String()
+			srcIP = netLayer.NetworkFlow().Dst().String()
+
+			transLayer := packet.TransportLayer()
+
+			if transLayer != nil {
+				dstPort = transLayer.TransportFlow().Dst().String()
+				srcPort = transLayer.TransportFlow().Src().String()
+				protocol = transLayer.LayerType().String()
+			}
+		}
+
+		dat := types.PacketMeta{
+			SrcIP:     srcIP,
+			DstIP:     dstIP,
+			SrcPort:   srcPort,
+			DstPort:   dstPort,
+			Protocol:  protocol,
+			Timestamp: packet.Metadata().Timestamp,
+		}
+
+		var buf bytes.Buffer
+		enc := gob.NewEncoder(&buf)
+		enc.Encode(dat)
+
+		fmt.Println("error???")
+
+		err = stream.Send(&pb.NetDat{Payload: buf.Bytes()})
 		if err != nil {
 			log.Printf("error occurred during stream of to_send in start_data_stream, error thrown: %s\n", err)
 			break

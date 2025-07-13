@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"crypto/tls"
+	"encoding/gob"
 	"fmt"
 	"io"
 
@@ -9,9 +11,8 @@ import (
 	"net"
 
 	pb "server-agent-threat-detection/satd/v1"
+	"server-agent-threat-detection/types"
 
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -26,14 +27,6 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 
 	totalBytes := 0
 
-	lt_dat, err := stream.Recv()
-
-	linkType := layers.LinkType(lt_dat.GetPayload()[0])
-
-	if err != nil {
-		log.Printf("error reading link type %s\n", err)
-	}
-
 	for {
 		netDat, err := stream.Recv()
 		if err == io.EOF {
@@ -45,11 +38,23 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 			log.Printf("error receiving netDat, error thrown: %s", err)
 			return err
 		}
+
 		log_chunk := netDat.GetPayload()
 
-		packet := gopacket.NewPacket(log_chunk, linkType, gopacket.Default)
+		var packetMetaData types.PacketMeta
+
+		buf := bytes.NewBuffer(log_chunk)
+
+		dec := gob.NewDecoder(buf)
+
+		err = dec.Decode(&packetMetaData)
+
+		if err != nil {
+			log.Println("couldn't decode netData in Feed loop, error thrown: %s\n", err)
+		}
+
+		fmt.Printf("%s, %s, %s, %s, %s, %s\n", packetMetaData.SrcIP, packetMetaData.DstIP, packetMetaData.SrcPort, packetMetaData.DstPort, packetMetaData.Protocol, packetMetaData.Timestamp)
 		// need to index packet meta data into elastic search (use docker to spawn it)
-		fmt.Println("received: ", packet)
 		totalBytes += len(log_chunk)
 	}
 
