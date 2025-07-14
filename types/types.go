@@ -9,6 +9,7 @@ type PacketMeta struct {
 	DstPort   string
 	Protocol  string
 	Timestamp time.Time
+	id
 }
 
 type SynAckRatio struct {

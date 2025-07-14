@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 
 	"log"
 	"net"
@@ -13,11 +15,18 @@ import (
 	pb "SATD/network_comms/v1"
 	"SATD/types"
 
+	"github.com/elastic/go-elasticsearch/v9"
+	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
 // need to add ip whitelist for server to look through before accepting a connection
+
+var (
+	elasticApiKey string
+	esClient      *elasticsearch.Client
+)
 
 type serverFeederServer struct {
 	pb.UnimplementedServerFeederServer
@@ -26,6 +35,8 @@ type serverFeederServer struct {
 func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 
 	totalBytes := 0
+
+	currIndex := esClient.Indices.Create("timestamp")
 
 	for {
 		netDat, err := stream.Recv()
@@ -54,6 +65,15 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 		}
 
 		fmt.Printf("%s, %s, %s, %s, %s, %s\n", packetMetaData.SrcIP, packetMetaData.DstIP, packetMetaData.SrcPort, packetMetaData.DstPort, packetMetaData.Protocol, packetMetaData.Timestamp)
+
+		data, err := json.Marshal(packetMetaData)
+
+		if err != nil {
+			fmt.Println("error serializing to json, error thrown: %s\n", err)
+		}
+
+		esClient.Index(, bytes.NewReader(data))
+
 		// need to index packet meta data into elastic search (use docker to spawn it)
 		totalBytes += len(log_chunk)
 	}
@@ -65,6 +85,7 @@ func main() {
 
 	// spawn the elastic search query and analysis go routine at the beginning.
 
+	godotenv.Load(".server_env")
 	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
 
 	if err != nil {
@@ -75,6 +96,13 @@ func main() {
 		Certificates: []tls.Certificate{cert},
 		ClientAuth:   tls.NoClientCert,
 	})
+
+	elasticApiKey = os.Getenv("ELASTIC_API_KEY")
+
+	esClient, err = elasticsearch.NewClient(elasticsearch.Config{
+		APIKey: elasticApiKey,
+	})
+
 
 	s := grpc.NewServer(grpc.Creds(creds))
 
