@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"log"
 	"net"
@@ -36,7 +37,7 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 
 	totalBytes := 0
 
-	currIndex := esClient.Indices.Create("timestamp")
+	currIndex := esClient.Indices.Create(time.Date())
 
 	for {
 		netDat, err := stream.Recv()

@@ -150,7 +150,8 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		APIKey: elasticApiKey,
 	})
 
-	w.Header().Set("Content-Type", "text/event-stream")
+	esClient.
+		w.Header().Set("Content-Type", "text/event-stream")
 }
 
 func main() {
