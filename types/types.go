@@ -10,3 +10,8 @@ type PacketMeta struct {
 	Protocol  string
 	Timestamp time.Time
 }
+
+type SynAckRatio struct {
+	Syns    uint32
+	SynAcks uint32
+}

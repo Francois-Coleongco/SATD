@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"os"
 
 	"github.com/google/gopacket"
@@ -16,8 +17,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	pb "server-agent-threat-detection/satd/v1"
-	"server-agent-threat-detection/types"
+	"SATD/agent/agent_analyzer"
+	pb "SATD/network_comms/v1"
+	"SATD/types"
 )
 
 var (
@@ -27,7 +29,19 @@ var (
 	MTU           = flag.Int64("MTU", 1500, "give the MTU of your network interface")                                                   // 1500 default ethernet
 	isPromiscuous = flag.Bool("promiscuous_mode", false, "set promiscuous mode to true if you wish to see packets not for your device") // 1500 default ethernet
 
+	// global stores
+	synAckRatios = make(map[string]*types.SynAckRatio)
 )
+
+func getHostLocalIP() (net.IP, error) {
+	conn, err := net.Dial("udp", "8.8.8.8:80") // Doesn't actually connect
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP, nil
+}
 
 func start_data_stream(client pb.ServerFeederClient) {
 	ctx := context.Background() // should be ample time to send a chunk
@@ -44,6 +58,13 @@ func start_data_stream(client pb.ServerFeederClient) {
 		log.Fatalf("error creating stream from client in start_data_stream, error thrown: %s\n", err)
 	}
 
+	hostIP, err := getHostLocalIP()
+	if err != nil {
+		log.Fatalf("couldn't get host's local ip")
+		return
+
+	}
+
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 
 	for packet := range packetSource.Packets() {
@@ -51,8 +72,6 @@ func start_data_stream(client pb.ServerFeederClient) {
 		if err != nil {
 			log.Printf("couldn't read  this packet %s\n", err)
 		}
-
-		fmt.Println("fucking hell")
 
 		netLayer := packet.NetworkLayer()
 
@@ -88,13 +107,25 @@ func start_data_stream(client pb.ServerFeederClient) {
 		enc := gob.NewEncoder(&buf)
 		enc.Encode(dat)
 
-		fmt.Println("error???")
+		var ip string
+
+		if srcIP == hostIP.String() {
+			ip = dstIP
+		} else {
+			ip = srcIP
+		}
+
+		fmt.Println("analyzing for tcp info")
+		agent_analyzer.Tcp_Packet_Analyzer(packet, ip, synAckRatios) // packets are processed sequentially, therefore adding to the map from inside this function is safe to do without mutex i think
+
+		fmt.Println(synAckRatios)
 
 		err = stream.Send(&pb.NetDat{Payload: buf.Bytes()})
 		if err != nil {
 			log.Printf("error occurred during stream of to_send in start_data_stream, error thrown: %s\n", err)
 			break
 		}
+
 	}
 
 	r, err := stream.CloseAndRecv()

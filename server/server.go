@@ -10,8 +10,8 @@ import (
 	"log"
 	"net"
 
-	pb "server-agent-threat-detection/satd/v1"
-	"server-agent-threat-detection/types"
+	pb "SATD/network_comms/v1"
+	"SATD/types"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
