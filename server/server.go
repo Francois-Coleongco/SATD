@@ -37,7 +37,19 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 
 	totalBytes := 0
 
-	currIndex := esClient.Indices.Create(time.Date())
+	utcTime := time.Now().UTC().Format("2006-01-02")
+
+	_, err := esClient.Indices.Create(utcTime)
+
+	if err != nil {
+		log.Printf("couldn't create today's index, error thrown: %s\n", err)
+		return err
+	}
+
+	if err != nil {
+		log.Printf("couldn't read agent_id, error thrown: %s\n", err)
+		return err
+	}
 
 	for {
 		netDat, err := stream.Recv()
@@ -62,18 +74,18 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 		err = dec.Decode(&packetMetaData)
 
 		if err != nil {
-			log.Println("couldn't decode netData in Feed loop, error thrown: %s\n", err)
+			log.Printf("couldn't decode netData in Feed loop, error thrown: %s\n", err)
 		}
 
-		fmt.Printf("%s, %s, %s, %s, %s, %s\n", packetMetaData.SrcIP, packetMetaData.DstIP, packetMetaData.SrcPort, packetMetaData.DstPort, packetMetaData.Protocol, packetMetaData.Timestamp)
+		fmt.Printf("%s %s, %s, %s, %s, %s, %s\n", packetMetaData.AgentID, packetMetaData.SrcIP, packetMetaData.DstIP, packetMetaData.SrcPort, packetMetaData.DstPort, packetMetaData.Protocol, packetMetaData.Timestamp)
 
 		data, err := json.Marshal(packetMetaData)
 
 		if err != nil {
-			fmt.Println("error serializing to json, error thrown: %s\n", err)
+			fmt.Printf("error serializing to json, error thrown: %s\n", err)
 		}
 
-		esClient.Index(, bytes.NewReader(data))
+		esClient.Index(utcTime, bytes.NewReader(data))
 
 		// need to index packet meta data into elastic search (use docker to spawn it)
 		totalBytes += len(log_chunk)
@@ -103,7 +115,6 @@ func main() {
 	esClient, err = elasticsearch.NewClient(elasticsearch.Config{
 		APIKey: elasticApiKey,
 	})
-
 
 	s := grpc.NewServer(grpc.Creds(creds))
 

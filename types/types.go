@@ -3,13 +3,13 @@ package types
 import "time"
 
 type PacketMeta struct {
+	AgentID   string
 	SrcIP     string
 	DstIP     string
 	SrcPort   string
 	DstPort   string
 	Protocol  string
 	Timestamp time.Time
-	id
 }
 
 type SynAckRatio struct {

@@ -23,8 +23,7 @@ import (
 )
 
 var (
-	id = 0111
-
+	agent_id      = flag.String("agent_id", "420", "give your agent a name")
 	interfaceName = flag.String("interface_name", "enp0s3", "give a valid network interface (hint: run `ip a`)")
 	MTU           = flag.Int64("MTU", 1500, "give the MTU of your network interface")                                                   // 1500 default ethernet
 	isPromiscuous = flag.Bool("promiscuous_mode", false, "set promiscuous mode to true if you wish to see packets not for your device") // 1500 default ethernet
@@ -65,6 +64,8 @@ func start_data_stream(client pb.ServerFeederClient) {
 
 	}
 
+	stream.Send(&pb.NetDat{Payload: []byte(*agent_id)})
+
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 
 	for packet := range packetSource.Packets() {
@@ -95,6 +96,7 @@ func start_data_stream(client pb.ServerFeederClient) {
 		}
 
 		dat := types.PacketMeta{
+			AgentID:   *agent_id,
 			SrcIP:     srcIP,
 			DstIP:     dstIP,
 			SrcPort:   srcPort,
