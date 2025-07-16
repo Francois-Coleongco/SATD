@@ -46,11 +46,6 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 		return err
 	}
 
-	if err != nil {
-		log.Printf("couldn't read agent_id, error thrown: %s\n", err)
-		return err
-	}
-
 	for {
 		netDat, err := stream.Recv()
 		if err == io.EOF {
