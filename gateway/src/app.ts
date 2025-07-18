@@ -38,7 +38,7 @@ app.post('/login', async (req, res) => {
 		return
 	}
 
-	const token = jsonwebtoken.sign(username, String(), { expiresIn: '1h' })
+	const token = jsonwebtoken.sign({ payload: username }, secretKey, { expiresIn: '1h' })
 	res.json({ token })
 	res.status(200)
 	res.send()
