@@ -24,6 +24,12 @@ import (
 
 // need to add ip whitelist for server to look through before accepting a connection
 
+//internals
+
+var (
+	latencyLogger *log.Logger = nil
+)
+
 var (
 	elasticApiKey string
 	esClient      *elasticsearch.Client
@@ -47,9 +53,20 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 	}
 
 	for {
+		currUtcTime := time.Now().UTC().Format("2006-01-02")
+
+		if utcTime != currUtcTime {
+			utcTime = currUtcTime
+			_, err := esClient.Indices.Create(utcTime)
+			if err != nil {
+				log.Printf("couldn't create Elasticsearch index, error thrown: %s\n", err)
+				continue // restart and see if you can log again
+			}
+		}
 		netDat, err := stream.Recv()
+		// use this to subtract the timestamp value of netDat. thats ur latency
 		if err == io.EOF {
-			log.Println("end of stream")
+			log.Println("END OF STREAM")
 			break
 		}
 
@@ -70,8 +87,12 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 
 		if err != nil {
 			log.Printf("couldn't decode netData in Feed loop, error thrown: %s\n", err)
+			log.Println("WWWWWWWWWOOOOOOOOOOOOOOT")
+			continue
 		}
-
+		fmt.Println("Packet Timestamp:", packetMetaData.Timestamp)
+		latency := time.Now().UTC().Sub(packetMetaData.Timestamp)
+		latencyLogger.Printf("%d ms", latency.Milliseconds()) // do the math of averaging after running to not interfere with latency calculations
 		fmt.Printf("%s %s, %s, %s, %s, %s, %s\n", packetMetaData.AgentID, packetMetaData.SrcIP, packetMetaData.DstIP, packetMetaData.SrcPort, packetMetaData.DstPort, packetMetaData.Protocol, packetMetaData.Timestamp)
 
 		data, err := json.Marshal(packetMetaData)
@@ -92,6 +113,14 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 func main() {
 
 	// spawn the elastic search query and analysis go routine at the beginning.
+	file, err := os.OpenFile("latency.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
+	if err != nil {
+		log.Printf("couldn't open latency.log, error thrown: %s\n", err)
+		// not fatal, if cant start this it's fine
+	}
+
+	latencyLogger = log.New(file, "", log.Ltime|log.LUTC|log.Lmicroseconds)
 
 	godotenv.Load(".server_env")
 	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")

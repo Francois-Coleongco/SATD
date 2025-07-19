@@ -11,13 +11,14 @@ import (
 	"log"
 	"net"
 	"os"
+	"sync"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	"SATD/agent/agent_analyzer"
+	"SATD/agent/agentanalyzer"
 	pb "SATD/network_comms/v1"
 	"SATD/types"
 )
@@ -29,7 +30,8 @@ var (
 	isPromiscuous = flag.Bool("promiscuous_mode", false, "set promiscuous mode to true if you wish to see packets not for your device") // 1500 default ethernet
 
 	// global stores
-	synAckRatios = make(map[string]*types.SynAckRatio)
+	synAckRatios      = make(map[string]*types.SynAckRatio)
+	synAckRatiosMutex sync.Mutex
 )
 
 func getHostLocalIP() (net.IP, error) {
@@ -69,10 +71,6 @@ func start_data_stream(client pb.ServerFeederClient) {
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 
 	for packet := range packetSource.Packets() {
-
-		if err != nil {
-			log.Printf("couldn't read  this packet %s\n", err)
-		}
 
 		netLayer := packet.NetworkLayer()
 
@@ -117,8 +115,7 @@ func start_data_stream(client pb.ServerFeederClient) {
 			ip = srcIP
 		}
 
-		fmt.Println("analyzing for tcp info")
-		agent_analyzer.Tcp_Packet_Analyzer(packet, ip, synAckRatios) // packets are processed sequentially, therefore adding to the map from inside this function is safe to do without mutex i think
+		go agentanalyzer.Tcp_Packet_Analyzer(packet, ip, synAckRatios, &synAckRatiosMutex)
 
 		fmt.Println(synAckRatios)
 

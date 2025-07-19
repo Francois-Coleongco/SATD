@@ -1,0 +1,12 @@
+🎉 Congrats, Elasticsearch and Kibana are installed and running in Docker!
+
+🌐 Open your browser at http://localhost:5601
+
+   Username: elastic
+   Password: KOZJIFGk
+
+🔌 Elasticsearch API endpoint: http://localhost:9200
+🔑 API key: Q2k2ZUlKZ0JfWUZtN3dWOTRwcUk6LUhUQ1EzRGZfZVFpQmF3QXc4NWZRZw==
+
+
+Learn more at https://github.com/elastic/start-local

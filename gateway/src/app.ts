@@ -13,6 +13,14 @@ const app = express()
 app.use(express.json())
 
 app.get('/dash', (req, res) => {
+
+	// get the token
+	// verify the token
+	// grab data
+	try {
+		const decoded = jsonwebtoken.verify(token, String(process.env.SECRET_JWT_KEY))
+	}
+
 	res.send("FFFFFFFFFUUUUUUUCKKKKKKKKKK")
 })
 
@@ -42,8 +50,8 @@ app.post('/login', async (req, res) => {
 	res.json({ token })
 	res.status(200)
 	res.send()
-
 })
+
 
 const options = {
 	key: fs.readFileSync(path.join(__dirname, "../key.pem")),
