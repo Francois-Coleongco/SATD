@@ -24,8 +24,7 @@ import (
 
 // need to add ip whitelist for server to look through before accepting a connection
 
-//internals
-
+// internals
 var (
 	latencyLogger *log.Logger = nil
 )
@@ -91,8 +90,11 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 			continue
 		}
 		fmt.Println("Packet Timestamp:", packetMetaData.Timestamp)
+
 		latency := time.Now().UTC().Sub(packetMetaData.Timestamp)
+
 		latencyLogger.Printf("%d ms", latency.Milliseconds()) // do the math of averaging after running to not interfere with latency calculations
+
 		fmt.Printf("%s %s, %s, %s, %s, %s, %s\n", packetMetaData.AgentID, packetMetaData.SrcIP, packetMetaData.DstIP, packetMetaData.SrcPort, packetMetaData.DstPort, packetMetaData.Protocol, packetMetaData.Timestamp)
 
 		data, err := json.Marshal(packetMetaData)
