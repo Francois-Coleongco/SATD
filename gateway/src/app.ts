@@ -41,13 +41,13 @@ app.post('/login', async (req, res) => {
 
 	const token = jsonwebtoken.sign({ username }, secretKey, { expiresIn: '1h' })
 	res.json({ token })
-	res.status(200)
-	res.send()
+	return res.status(200).send()
 })
 
 
 app.get('/fetch-dashboard-info', (req, res) => {
 
+	console.log("IM TRYING OKAY???")
 	const authHeader = req.headers.authorization
 
 	if (!authHeader) {
@@ -57,6 +57,7 @@ app.get('/fetch-dashboard-info', (req, res) => {
 	const token = authHeader.split(' ')[1]
 
 	try {
+
 
 		const decoded = jsonwebtoken.verify(token, String(process.env.SECRET_JWT_KEY)) as JwtPayload
 
@@ -84,19 +85,14 @@ app.get('/fetch-dashboard-info', (req, res) => {
 	// 	RAMUsage: ramUsage,
 	// }
 
-	const info: AgentInfo = {
-		AgentId: ,
-		ThreatSummary: threatSummary,
-		Health: health,
-		LastCheckIn: lastCheckIn,
-	}
+	// const info: AgentInfo = {
+	// 	AgentId: ,
+	// 	ThreatSummary: threatSummary,
+	// 	Health: health,
+	// 	LastCheckIn: lastCheckIn,
+	// }
 
-
-
-	res.status(200)
-
-
-	return res.send(`welcome to dashboard endpoint`)
+	return res.status(200).send(`welcome to dashboard endpoint`)
 
 })
 
