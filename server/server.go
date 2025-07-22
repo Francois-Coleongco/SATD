@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 	"time"
 
 	"log"
@@ -26,7 +27,9 @@ import (
 
 // internals
 var (
-	latencyLogger *log.Logger = nil
+	latencyLogger  *log.Logger = nil
+	agentsMap      map[string]time.Time
+	agentsMapMutex sync.Mutex
 )
 
 var (
@@ -38,32 +41,28 @@ type serverFeederServer struct {
 	pb.UnimplementedServerFeederServer
 }
 
+func createESIndex(utcTime string) {
+	_, err := esClient.Indices.Create(utcTime)
+
+	if err != nil {
+		log.Printf("continuing without ES index, error thrown: %s\n", err)
+	}
+}
+
 func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 
+	fmt.Println("called Feed")
 	totalBytes := 0
 
 	utcTime := time.Now().UTC().Format("2006-01-02")
 
-	_, err := esClient.Indices.Create(utcTime)
-
-	if err != nil {
-		log.Printf("couldn't create today's index, error thrown: %s\n", err)
-		return err
-	}
+	createESIndex(utcTime)
 
 	for {
-		currUtcTime := time.Now().UTC().Format("2006-01-02")
 
-		if utcTime != currUtcTime {
-			utcTime = currUtcTime
-			_, err := esClient.Indices.Create(utcTime)
-			if err != nil {
-				log.Printf("couldn't create Elasticsearch index, error thrown: %s\n", err)
-				continue // restart and see if you can log again
-			}
-		}
+		fmt.Println("supposed to read here")
 		netDat, err := stream.Recv()
-		// use this to subtract the timestamp value of netDat. thats ur latency
+
 		if err == io.EOF {
 			log.Println("END OF STREAM")
 			break
@@ -76,6 +75,18 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 
 		log_chunk := netDat.GetPayload()
 
+		if netDat.GetIsHeartbeat() {
+			agentsMapMutex.Lock()
+			agentID := string(netDat.GetPayload())
+			agentsMap[agentID] = time.Now()
+			agentsMapMutex.Unlock()
+			continue
+		}
+
+		currUtcTime := time.Now().UTC().Format("2006-01-02")
+		createESIndex(currUtcTime)
+		utcTime = currUtcTime
+
 		var packetMetaData types.PacketMeta
 
 		buf := bytes.NewBuffer(log_chunk)
@@ -86,10 +97,8 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 
 		if err != nil {
 			log.Printf("couldn't decode netData in Feed loop, error thrown: %s\n", err)
-			log.Println("WWWWWWWWWOOOOOOOOOOOOOOT")
 			continue
 		}
-		fmt.Println("Packet Timestamp:", packetMetaData.Timestamp)
 
 		latency := time.Now().UTC().Sub(packetMetaData.Timestamp)
 
@@ -112,9 +121,32 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 	return stream.SendAndClose(&pb.RecConf{Success: true, BytesReceived: int64(totalBytes)})
 }
 
-func main() {
+func heartbeatCheck() {
+	for {
+		currTime := time.Now()
+		fmt.Println("checking beat")
+		agentsMapMutex.Lock()
+		fmt.Println("I GOT A LOCK YAYYYYY")
 
-	// spawn the elastic search query and analysis go routine at the beginning.
+		for agent, lastTime := range agentsMap {
+			if lastTime.IsZero() {
+				continue
+			}
+			diff := currTime.Sub(lastTime)
+			if diff.Seconds() >= 4 {
+				log.Println("agent", agent, " is dead")
+				agentsMap[agent] = time.Time{} // zero time. aka in 1970 or something i think. indicating that this agent is dead;
+			} else {
+				log.Println("BITCH IM STILL HERE!")
+			}
+		}
+		agentsMapMutex.Unlock()
+
+		time.Sleep(time.Second * 4) // same interval length as heartbeat sends
+	}
+
+}
+func initLogger() {
 	file, err := os.OpenFile("latency.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 
 	if err != nil {
@@ -124,7 +156,9 @@ func main() {
 
 	latencyLogger = log.New(file, "", log.Ltime|log.LUTC|log.Lmicroseconds)
 
-	godotenv.Load(".server_env")
+}
+
+func initTLS() credentials.TransportCredentials {
 	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
 
 	if err != nil {
@@ -136,13 +170,30 @@ func main() {
 		ClientAuth:   tls.NoClientCert,
 	})
 
+	return creds
+
+}
+
+func main() {
+
+	agentsMap = make(map[string]time.Time)
+
+	godotenv.Load(".server_env")
+
+	initLogger()
+
 	elasticApiKey = os.Getenv("ELASTIC_API_KEY")
+
+	var err error
 
 	esClient, err = elasticsearch.NewClient(elasticsearch.Config{
 		APIKey: elasticApiKey,
 	})
 
-	s := grpc.NewServer(grpc.Creds(creds))
+	go heartbeatCheck()
+
+	fmt.Println("made it after")
+	s := grpc.NewServer(grpc.Creds(initTLS()))
 
 	lis, err := net.Listen("tcp", ":8080")
 
@@ -158,5 +209,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to serve, error thrown: %s", err)
 	}
+
+	log.Println("Graceful Exit :)")
 
 }

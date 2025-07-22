@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
@@ -44,8 +45,23 @@ func getHostLocalIP() (net.IP, error) {
 	return localAddr.IP, nil
 }
 
+func send_heart_beats(client pb.ServerFeederClient) {
+	ctx := context.Background()
+	stream, err := client.Feed(ctx)
+
+	if err != nil {
+		log.Fatalf("don't you go breaking my hearttt, error thrown: %s", err)
+	}
+
+	for {
+		stream.Send(&pb.NetDat{IsHeartbeat: true, Payload: []byte(*agent_id)})
+		time.Sleep(time.Second * 4)
+	}
+
+}
+
 func start_data_stream(client pb.ServerFeederClient) {
-	ctx := context.Background() // should be ample time to send a chunk
+	ctx := context.Background()
 
 	handle, err := pcap.OpenLive(*interfaceName, int32(*MTU), *isPromiscuous, pcap.BlockForever)
 
@@ -65,8 +81,6 @@ func start_data_stream(client pb.ServerFeederClient) {
 		return
 
 	}
-
-	stream.Send(&pb.NetDat{Payload: []byte(*agent_id)})
 
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 
@@ -162,6 +176,7 @@ func main() {
 
 	c := pb.NewServerFeederClient(conn)
 
+	go send_heart_beats(c)
 	start_data_stream(c)
 
 }

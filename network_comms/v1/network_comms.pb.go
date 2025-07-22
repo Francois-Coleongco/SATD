@@ -23,7 +23,8 @@ const (
 
 type NetDat struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Payload       []byte                 `protobuf:"bytes,1,opt,name=payload,proto3" json:"payload,omitempty"`
+	IsHeartbeat   bool                   `protobuf:"varint,1,opt,name=is_heartbeat,json=isHeartbeat,proto3" json:"is_heartbeat,omitempty"`
+	Payload       []byte                 `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -56,6 +57,13 @@ func (x *NetDat) ProtoReflect() protoreflect.Message {
 // Deprecated: Use NetDat.ProtoReflect.Descriptor instead.
 func (*NetDat) Descriptor() ([]byte, []int) {
 	return file_network_comms_network_comms_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *NetDat) GetIsHeartbeat() bool {
+	if x != nil {
+		return x.IsHeartbeat
+	}
+	return false
 }
 
 func (x *NetDat) GetPayload() []byte {
@@ -121,9 +129,10 @@ var File_network_comms_network_comms_proto protoreflect.FileDescriptor
 
 const file_network_comms_network_comms_proto_rawDesc = "" +
 	"\n" +
-	"!network_comms/network_comms.proto\x12\rnetwork_comms\"\"\n" +
-	"\x06NetDat\x12\x18\n" +
-	"\apayload\x18\x01 \x01(\fR\apayload\"J\n" +
+	"!network_comms/network_comms.proto\x12\rnetwork_comms\"E\n" +
+	"\x06NetDat\x12!\n" +
+	"\fis_heartbeat\x18\x01 \x01(\bR\visHeartbeat\x12\x18\n" +
+	"\apayload\x18\x02 \x01(\fR\apayload\"J\n" +
 	"\aRecConf\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12%\n" +
 	"\x0ebytes_received\x18\x02 \x01(\x03R\rbytesReceived2I\n" +

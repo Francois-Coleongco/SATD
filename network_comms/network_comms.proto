@@ -4,7 +4,10 @@ package network_comms; // Adjust package name to your project
 
 option go_package = "network_comms/v1";
 
-message NetDat { bytes payload = 1; }
+message NetDat {
+  bool is_heartbeat = 1;
+  bytes payload = 2;
+}
 
 message RecConf {
   bool success = 1;
