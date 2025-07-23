@@ -1,0 +1,1 @@
+ML detection scores (high data volume during off hours). Log minute by minute accounts of traffic volume, the type of traffic (specific down to the ports as well). To track this, you can have each agent log the number of bytes that are coming into it with /proc/net/dev and cat that out. It tells how many bytes have come in since boot. track that and you can find the difference.
