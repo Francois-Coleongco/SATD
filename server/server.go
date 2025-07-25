@@ -27,8 +27,8 @@ import (
 
 // internals
 var (
-	latencyLogger  *log.Logger = nil
-	agentsMap      map[string]time.Time
+	latencyLogger  *log.Logger                    = nil
+	agentsMap      map[string]types.AgentBeatData // key is the id of the agent
 	agentsMapMutex sync.Mutex
 )
 
@@ -128,16 +128,16 @@ func heartbeatCheck() {
 		agentsMapMutex.Lock()
 		fmt.Println("I GOT A LOCK YAYYYYY")
 
-		for agent, lastTime := range agentsMap {
-			if lastTime.IsZero() {
+		for agent, agentData := range agentsMap {
+			if agentData.LastBeat.IsZero() {
 				continue
 			}
-			diff := currTime.Sub(lastTime)
+			diff := currTime.Sub(agentData.LastBeat)
 			if diff.Seconds() >= 4 {
 				log.Println("agent", agent, " is dead")
-				agentsMap[agent] = time.Time{} // zero time. aka in 1970 or something i think. indicating that this agent is dead;
+				agentsMap[agent] = types.AgentBeatData{} // zero time. aka in 1970 or something i think. indicating that this agent is dead;
 			} else {
-				log.Println("BITCH IM STILL HERE!")
+				log.Println(agent, "IS STILL HERE!")
 			}
 		}
 		agentsMapMutex.Unlock()

@@ -6,3 +6,9 @@ export type AgentInfo = {
 	// to be added // CPUUsage: number, // as percent
 	// to be added // RAMUsage: number, // as percent
 }
+
+export interface JwtPayload {
+	username: string;
+	iat?: number;
+	exp?: number;
+}

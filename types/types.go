@@ -2,6 +2,10 @@ package types
 
 import "time"
 
+type AgentBeatData struct {
+	LastBeat time.Time
+}
+
 type PacketMeta struct {
 	AgentID   string
 	SrcIP     string

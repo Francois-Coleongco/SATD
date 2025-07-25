@@ -12,6 +12,7 @@ import (
 )
 
 func Tcp_Packet_Analyzer(packet gopacket.Packet, ip string, ratio map[string]*types.SynAckRatio, mut *sync.Mutex) {
+	// for syn flood / tcp half scan, but for tcp half scan, we need to make sure that we track syn/synacks per port on the remote ip
 	mut.Lock()
 	defer mut.Unlock()
 

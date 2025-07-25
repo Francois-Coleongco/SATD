@@ -3,8 +3,12 @@ import fs from 'fs'
 import path from 'path'
 import https from 'https'
 import jsonwebtoken from 'jsonwebtoken'
-import { userExists } from './auth'
+import { authMiddleware, userExists } from './auth'
 import { AgentInfo } from './types'
+import { csrfSync } from 'csrf-sync'
+import cookieParser from 'cookie-parser'
+import session, { Session } from 'express-session'
+import crypto from 'crypto'
 
 interface JwtPayload {
 	username: string;
@@ -14,10 +18,60 @@ interface JwtPayload {
 
 const app = express()
 
-app.use(express.json())
+const {
+	invalidCsrfTokenError, // This is just for convenience if you plan on making your own middleware.
+	generateToken, // Use this in your routes to generate, store, and get a CSRF token.
+	getTokenFromRequest, // use this to retrieve the token submitted by a user
+	getTokenFromState, // The default method for retrieving a token from state.
+	storeTokenInState, // The default method for storing a token in state.
+	revokeToken, // Revokes/deletes a token by calling storeTokenInState(undefined)
+	csrfSynchronisedProtection, // This is the default CSRF protection middleware.
+} = csrfSync({
+	getTokenFromRequest: (req) => {
+		return req.cookies['XSRF-TOKEN']
 
+	}
+});
+
+app.use(session({
+	secret: crypto.randomBytes(32).toString('hex'),
+	resave: false,
+	saveUninitialized: true,
+	cookie: {
+		secure: true,
+		httpOnly: true,
+		sameSite: 'strict',
+		maxAge: 24 * 60 * 60 * 1000
+	}
+}))
+
+app.use(express.json())
+app.use(cookieParser())
+
+app.use(csrfSynchronisedProtection)
+
+app.use((req, res, next) => {
+	console.log('Session:', req.session);
+	console.log('Cookies:', req.cookies);
+	next();
+});
+
+app.get('/get-csrf-token', (req, res) => {
+	const token = generateToken(req)
+	res.cookie('XSRF-TOKEN', token, {
+		httpOnly: false,
+		secure: true,
+		sameSite: 'strict'
+
+	})
+	res.json({ csrfToken: token })
+})
 
 app.post('/login', async (req, res) => {
+
+	// need to implement csrf protection here
+	console.log("this was my csrf token: ", req.csrfToken)
+
 
 	const username = req.body.username
 	const password = req.body.password
@@ -40,32 +94,18 @@ app.post('/login', async (req, res) => {
 	}
 
 	const token = jsonwebtoken.sign({ username }, secretKey, { expiresIn: '1h' })
-	res.json({ token })
-	return res.status(200).send()
+
+	// need to remove this once ui is complete
+
+	res.cookie('jwt', token)
+
+	return res.json({ token })
 })
 
 
-app.get('/fetch-dashboard-info', (req, res) => {
+app.get('/fetch-dashboard-info', authMiddleware, async (req, res) => {
 
-	console.log("IM TRYING OKAY???")
-	const authHeader = req.headers.authorization
-
-	if (!authHeader) {
-		return res.status(401).send("no auth header provided")
-	}
-
-	const token = authHeader.split(' ')[1]
-
-	try {
-
-
-		const decoded = jsonwebtoken.verify(token, String(process.env.SECRET_JWT_KEY)) as JwtPayload
-
-		res.locals.user = { username: decoded.username }
-
-	} catch {
-		return res.status(401).send("WHO DA HELL IS THIS GUY???? INVALID TOKEN")
-	}
+	// await the data from the go server here
 
 	// server.go can now be called upon to give data to this endpoint
 
