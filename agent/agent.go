@@ -76,6 +76,8 @@ func start_data_stream(client pb.ServerFeederClient) {
 	}
 
 	hostIP, err := getHostLocalIP()
+	hostIPAddr := hostIP.String()
+
 	if err != nil {
 		log.Fatalf("couldn't get host's local ip")
 		return
@@ -107,8 +109,17 @@ func start_data_stream(client pb.ServerFeederClient) {
 			}
 		}
 
+		var other_ip string
+
+		if srcIP == hostIPAddr {
+			other_ip = dstIP
+		} else {
+			other_ip = srcIP
+		}
+
 		dat := types.PacketMeta{
 			AgentID:   *agent_id,
+			AgentIP:   "", // empty since server populates this using grpc context
 			SrcIP:     srcIP,
 			DstIP:     dstIP,
 			SrcPort:   srcPort,
@@ -121,15 +132,7 @@ func start_data_stream(client pb.ServerFeederClient) {
 		enc := gob.NewEncoder(&buf)
 		enc.Encode(dat)
 
-		var ip string
-
-		if srcIP == hostIP.String() {
-			ip = dstIP
-		} else {
-			ip = srcIP
-		}
-
-		go agentanalyzer.Tcp_Packet_Analyzer(packet, ip, synAckRatios, &synAckRatiosMutex)
+		go agentanalyzer.Tcp_Packet_Analyzer(packet, other_ip, synAckRatios, &synAckRatiosMutex)
 
 		fmt.Println(synAckRatios)
 

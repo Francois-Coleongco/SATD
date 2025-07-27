@@ -2,12 +2,16 @@ package types
 
 import "time"
 
-type AgentBeatData struct {
-	LastBeat time.Time
+type AgentInfo struct { // heartbeat data
+	AgentIP       string
+	ThreatSummary string
+	Health        string
+	LastCheckIn   time.Time
 }
 
 type PacketMeta struct {
 	AgentID   string
+	AgentIP   string
 	SrcIP     string
 	DstIP     string
 	SrcPort   string

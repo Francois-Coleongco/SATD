@@ -54,3 +54,8 @@ export const userExists = async (username: string, password: string): Promise<bo
 
 }
 
+export const agentAuthMiddleware = () => {
+
+}
+
+

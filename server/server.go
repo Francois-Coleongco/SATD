@@ -2,12 +2,14 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,15 +23,17 @@ import (
 	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/peer"
 )
 
 // need to add ip whitelist for server to look through before accepting a connection
 
 // internals
 var (
-	latencyLogger  *log.Logger                    = nil
-	agentsMap      map[string]types.AgentBeatData // key is the id of the agent
+	latencyLogger  *log.Logger                = nil
+	agentsMap      map[string]types.AgentInfo // key is the id of the agent
 	agentsMapMutex sync.Mutex
+	utcTime        string
 )
 
 var (
@@ -49,7 +53,75 @@ func createESIndex(utcTime string) {
 	}
 }
 
+func healthCheck(agentID string, agentIP string) types.AgentInfo {
+	// check ips by querying elastic search for the day's index
+
+	query := fmt.Sprintf(`{
+		"query": {
+			"bool": {
+				"must": [
+					{ "match": { "AgentID": "%s" } }
+				],
+				"must_not": [
+					{ "term": { "SrcIP": "%s" } }
+				]
+			}
+		}
+	}`, agentID, agentIP) // exclude agent IP from src port to filter on packets arriving to the client only
+
+	res, err := esClient.Search(
+		esClient.Search.WithContext(context.Background()),
+		esClient.Search.WithIndex(utcTime),
+		esClient.Search.WithBody(strings.NewReader(query)),
+	)
+
+	if err != nil {
+		return types.AgentInfo{}
+	}
+
+	var r map[string]any
+	err = json.NewDecoder(res.Body).Decode(&r)
+
+	fmt.Println("Search results:")
+	for _, hit := range r["hits"].(map[string]any)["hits"].([]any) {
+		source := hit.(map[string]any)["SrcIP"]
+		fmt.Printf("ip was  %v\n", source)
+	}
+
+	return types.AgentInfo{
+		ThreatSummary: "", // include possibly scanned if any
+		Health:        "", // note this is called within a lock
+		LastCheckIn:   time.Now().UTC(),
+	}
+
+}
+
+func processHeartbeat(data []byte) { // data is the heartbeat data
+	agentID := string(data)
+	agentsMapMutex.Lock()
+	agentIP := agentsMap[agentID].AgentIP
+	agentsMapMutex.Unlock()
+
+	inf := healthCheck(agentID, agentIP)
+
+	agentsMapMutex.Lock()
+	agentsMap[agentID] = inf
+	agentsMapMutex.Unlock()
+}
+
 func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
+	p, ok := peer.FromContext(stream.Context())
+	if !ok {
+		return fmt.Errorf("issue getting peer from context in Feed, error thrown")
+	}
+
+	addr, ok := p.Addr.(*net.TCPAddr)
+
+	if !ok {
+		return fmt.Errorf("couldn't get TCP address, we only allow TCP 'round these parts. gtfo, ur cringe")
+	}
+
+	agentIP := addr.IP.String()
 
 	fmt.Println("called Feed")
 	totalBytes := 0
@@ -73,13 +145,10 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 			return err
 		}
 
-		log_chunk := netDat.GetPayload()
+		data := netDat.GetPayload()
 
 		if netDat.GetIsHeartbeat() {
-			agentsMapMutex.Lock()
-			agentID := string(netDat.GetPayload())
-			agentsMap[agentID] = time.Now()
-			agentsMapMutex.Unlock()
+			go processHeartbeat(data)
 			continue
 		}
 
@@ -89,7 +158,7 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 
 		var packetMetaData types.PacketMeta
 
-		buf := bytes.NewBuffer(log_chunk)
+		buf := bytes.NewBuffer(data)
 
 		dec := gob.NewDecoder(buf)
 
@@ -106,16 +175,18 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 
 		fmt.Printf("%s %s, %s, %s, %s, %s, %s\n", packetMetaData.AgentID, packetMetaData.SrcIP, packetMetaData.DstIP, packetMetaData.SrcPort, packetMetaData.DstPort, packetMetaData.Protocol, packetMetaData.Timestamp)
 
-		data, err := json.Marshal(packetMetaData)
+		packetMetaData.AgentIP = agentIP
+
+		pData, err := json.Marshal(packetMetaData)
 
 		if err != nil {
 			fmt.Printf("error serializing to json, error thrown: %s\n", err)
 		}
 
-		esClient.Index(utcTime, bytes.NewReader(data))
+		esClient.Index(utcTime, bytes.NewReader(pData))
 
 		// need to index packet meta data into elastic search (use docker to spawn it)
-		totalBytes += len(log_chunk)
+		totalBytes += len(data)
 	}
 
 	return stream.SendAndClose(&pb.RecConf{Success: true, BytesReceived: int64(totalBytes)})
@@ -129,13 +200,13 @@ func heartbeatCheck() {
 		fmt.Println("I GOT A LOCK YAYYYYY")
 
 		for agent, agentData := range agentsMap {
-			if agentData.LastBeat.IsZero() {
+			if agentData.LastCheckIn.IsZero() {
 				continue
 			}
-			diff := currTime.Sub(agentData.LastBeat)
+			diff := currTime.Sub(agentData.LastCheckIn)
 			if diff.Seconds() >= 4 {
 				log.Println("agent", agent, " is dead")
-				agentsMap[agent] = types.AgentBeatData{} // zero time. aka in 1970 or something i think. indicating that this agent is dead;
+				agentsMap[agent] = types.AgentInfo{} // zero time. aka in 1970 or something i think. indicating that this agent is dead;
 			} else {
 				log.Println(agent, "IS STILL HERE!")
 			}
@@ -176,7 +247,7 @@ func initTLS() credentials.TransportCredentials {
 
 func main() {
 
-	agentsMap = make(map[string]time.Time)
+	agentsMap = make(map[string]types.AgentInfo)
 
 	godotenv.Load(".server_env")
 

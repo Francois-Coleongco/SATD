@@ -18,6 +18,8 @@ interface JwtPayload {
 
 const app = express()
 
+let agentsMap: Map<string, AgentInfo> = new Map(); // id, AgentData
+
 const {
 	invalidCsrfTokenError, // This is just for convenience if you plan on making your own middleware.
 	generateToken, // Use this in your routes to generate, store, and get a CSRF token.
@@ -29,7 +31,6 @@ const {
 } = csrfSync({
 	getTokenFromRequest: (req) => {
 		return req.cookies['XSRF-TOKEN']
-
 	}
 });
 
@@ -103,34 +104,18 @@ app.post('/login', async (req, res) => {
 })
 
 
+app.post('/add-dashboard-info', agentAuthMiddleware, async (req, res) => {
+	return status(200).send("SUCCESSFUL SEND DATA");
+})
+
+
 app.get('/fetch-dashboard-info', authMiddleware, async (req, res) => {
 
-	// await the data from the go server here
+	// need to repopulate if there was a change, how do we know if there was a change?
+	for (const [agentID, agentInfo] of agentsMap) {
+	}
 
-	// server.go can now be called upon to give data to this endpoint
-
-	// get the id of the agent
-	// threat summary (being hacked, being scanned, healthy)
-	// health ["Critical", "High", "Medium", "Low"]
-	// last check in (when agent last communicated it's status)
-	// cpu and memory usage of each agent
-	// total connections over time graph for each agent
-	//
-	// const info = AgentInfo	{
-	// 	AgentId: agentID,
-	// 	ThreatSummary: threatSummary,
-	// 	Health: health,
-	// 	LastCheckIn: lastCheckIn,
-	// 	CPUUsage: cpuUsage,
-	// 	RAMUsage: ramUsage,
-	// }
-
-	// const info: AgentInfo = {
-	// 	AgentId: ,
-	// 	ThreatSummary: threatSummary,
-	// 	Health: health,
-	// 	LastCheckIn: lastCheckIn,
-	// }
+	// return only the updated ones
 
 	return res.status(200).send(`welcome to dashboard endpoint`)
 

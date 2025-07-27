@@ -1,5 +1,4 @@
-export type AgentInfo = {
-	AgentId: string,
+export type AgentInfo = { // aka heartbeat data
 	ThreatSummary: string,
 	Health: string,
 	LastCheckIn: Date,
