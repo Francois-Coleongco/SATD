@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"encoding/gob"
 	"flag"
-	"fmt"
 	"log"
 	"net"
 	"os"
@@ -133,8 +132,6 @@ func start_data_stream(client pb.ServerFeederClient) {
 		enc.Encode(dat)
 
 		go agentanalyzer.Tcp_Packet_Analyzer(packet, other_ip, synAckRatios, &synAckRatiosMutex)
-
-		fmt.Println(synAckRatios)
 
 		err = stream.Send(&pb.NetDat{Payload: buf.Bytes()})
 		if err != nil {

@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
 	"encoding/gob"
 	"encoding/json"
@@ -55,7 +54,6 @@ func createESIndex(utcTime string) {
 
 func healthCheck(agentID string, agentIP string) types.AgentInfo {
 	// check ips by querying elastic search for the day's index
-
 	query := fmt.Sprintf(`{
 		"query": {
 			"bool": {
@@ -67,32 +65,52 @@ func healthCheck(agentID string, agentIP string) types.AgentInfo {
 				]
 			}
 		}
-	}`, agentID, agentIP) // exclude agent IP from src port to filter on packets arriving to the client only
+	}`, agentID, agentIP)
 
 	res, err := esClient.Search(
-		esClient.Search.WithContext(context.Background()),
 		esClient.Search.WithIndex(utcTime),
 		esClient.Search.WithBody(strings.NewReader(query)),
+		esClient.Search.WithPretty(),
 	)
 
 	if err != nil {
+		fmt.Println("bad ES search for SrcIPs")
 		return types.AgentInfo{}
 	}
 
-	var r map[string]any
-	err = json.NewDecoder(res.Body).Decode(&r)
+	data, err := io.ReadAll(res.Body)
 
-	fmt.Println("Search results:")
-	for _, hit := range r["hits"].(map[string]any)["hits"].([]any) {
-		source := hit.(map[string]any)["SrcIP"]
-		fmt.Printf("ip was  %v\n", source)
+	if err != nil {
+		fmt.Println("couldn't ReadAll res.Body")
+		return types.AgentInfo{}
 	}
 
-	return types.AgentInfo{
+	var r types.ESResponse
+
+	err = json.Unmarshal(data, &r)
+
+	if err != nil {
+		fmt.Println("couldn't unmarshal SrcIP results into ESResponse r")
+		return types.AgentInfo{}
+	}
+
+	inf := types.AgentInfo{
 		ThreatSummary: "", // include possibly scanned if any
 		Health:        "", // note this is called within a lock
+		UniqueIPs:     make(map[string]int),
 		LastCheckIn:   time.Now().UTC(),
 	}
+
+	for _, hit := range r.Hits.Hits {
+		_, exists := inf.UniqueIPs[hit.Source.SrcIP]
+		if !exists {
+			// inf.UniqueIPs[hit.Source.SrcIP] = ipCheckAbuseIPDB(hit.Source.SrcIP)
+			inf.UniqueIPs[hit.Source.SrcIP] = 1
+		}
+		fmt.Println("adding unique ip: ", hit.Source.SrcIP)
+	}
+
+	return inf
 
 }
 

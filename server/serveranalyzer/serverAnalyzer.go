@@ -9,7 +9,7 @@ import (
 
 var baseURL = "https://api.abuseipdb.com/api/v2/check"
 
-func checkIP(ip string) {
+func ipCheckAbuseIPDB(ip string) {
 	params := url.Values{}
 	params.Add("ipAddress", ip)
 
