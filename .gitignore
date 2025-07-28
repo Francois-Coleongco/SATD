@@ -1,2 +1,3 @@
 gateway/node_modules/
 server/latency.log
+server/server.out
