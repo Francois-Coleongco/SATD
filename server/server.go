@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -35,7 +36,14 @@ var (
 	utcTime        string
 )
 
+// apis
 var (
+	dashboardServerProtAddr string
+	dashboardServerAuthAddr string
+	dashboardJWT            string
+	dashboardUser           string
+	dashboardPswd           string
+
 	elasticApiKey string
 	esClient      *elasticsearch.Client
 )
@@ -114,6 +122,66 @@ func healthCheck(agentID string, agentIP string) types.AgentInfo {
 
 }
 
+func authToDash(attempts int) {
+
+	for i := 0; i < attempts; i++ {
+
+		req, err := http.NewRequest("POST", dashboardServerAuthAddr, nil)
+
+		if err != nil {
+			log.Println("failed authToDash")
+			continue
+		}
+
+		req.Body // get the jwt from here
+
+	}
+}
+
+func sendBeatToDash(agentID string, inf types.AgentInfo) {
+
+	// type AgentInfo struct { // heartbeat data
+	// 	AgentIP       string
+	// 	ThreatSummary string
+	// 	Health        string
+	// 	UniqueIPs     map[string]int // ips, AbuseIPDB score. these ips are by the day
+	// 	LastCheckIn   time.Time
+	// }
+	// make a request to the protected endpoint
+	// if unauthorized, request for a JWT token using a user and password in .server_env
+	// retry the protected endpoint request
+
+	inf.AgentID = agentID
+
+	jsonBeat, err := json.Marshal(inf)
+
+	if err != nil {
+		log.Printf("error marshalling heartbeat data to json, error thrown: %s\n", err)
+		return
+	}
+
+	reader := bytes.NewReader(jsonBeat)
+
+	attempts := 0
+
+	for attempts < types.MAX_PROT_ATTEMPTS_BEFORE_REAUTH {
+		r, err := http.NewRequest("POST", dashboardServerProtAddr, reader)
+		r.Header.Set("Authorization-Header", "Bearer "+dashboardJWT)
+
+		if err != nil {
+			log.Printf("could not send heartbeat to protected endpoint, error thrown: %s\n", err)
+		}
+
+		if r.Response.StatusCode == 200 {
+			break
+		} else if r.Response.StatusCode == 401 {
+			log.Printf("was unauthorized when attempting to send heartbeat")
+			authToDash(4)
+		}
+		time.Sleep(time.Millisecond * 250)
+	}
+}
+
 func processHeartbeat(data []byte) { // data is the heartbeat data
 	agentID := string(data)
 	agentsMapMutex.Lock()
@@ -125,6 +193,8 @@ func processHeartbeat(data []byte) { // data is the heartbeat data
 	agentsMapMutex.Lock()
 	agentsMap[agentID] = inf
 	agentsMapMutex.Unlock()
+
+	sendBeatToDash(agentID, inf)
 }
 
 func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
@@ -263,15 +333,23 @@ func initTLS() credentials.TransportCredentials {
 
 }
 
+func initializeEnvs() {
+	dashboardServerProtAddr = os.Getenv("DASHBOARD_SERVER_PROT_ADDR")
+	dashboardServerAuthAddr = os.Getenv("DASHBOARD_SERVER_AUTH_ADDR")
+
+	elasticApiKey = os.Getenv("ELASTIC_API_KEY")
+}
+
 func main() {
+
+	// fetchWhitelist()
 
 	agentsMap = make(map[string]types.AgentInfo)
 
 	godotenv.Load(".server_env")
 
 	initLogger()
-
-	elasticApiKey = os.Getenv("ELASTIC_API_KEY")
+	initializeEnvs()
 
 	var err error
 

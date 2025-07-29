@@ -73,7 +73,6 @@ app.post('/login', async (req, res) => {
 	// need to implement csrf protection here
 	console.log("this was my csrf token: ", req.csrfToken)
 
-
 	const username = req.body.username
 	const password = req.body.password
 
@@ -104,8 +103,10 @@ app.post('/login', async (req, res) => {
 })
 
 
-app.post('/add-dashboard-info', agentAuthMiddleware, async (req, res) => {
-	return status(200).send("SUCCESSFUL SEND DATA");
+app.post('/add-dashboard-info', authMiddleware, async (req, res) => {
+
+	req.body.
+	return res.status(200).send("SUCCESSFUL SEND DATA");
 })
 
 

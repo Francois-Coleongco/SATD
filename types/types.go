@@ -2,7 +2,11 @@ package types
 
 import "time"
 
+// constants
+const MAX_PROT_ATTEMPTS_BEFORE_REAUTH = 4
+
 type AgentInfo struct { // heartbeat data
+	AgentID       string
 	AgentIP       string
 	ThreatSummary string
 	Health        string

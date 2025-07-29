@@ -7,7 +7,17 @@ import { JwtPayload } from './types'
 
 
 export const authMiddleware = (req: Request, res: Response) => {
-	const token = req.cookies.jwt
+	const authHeader = req.headers.authorization
+	var token = req.cookies.jwt
+
+	if (authHeader) {
+		console.log("no auth header, attempting to find a token")
+		const parts = authHeader.split(' ')
+
+		if (parts.length === 2 && parts[0] == 'Bearer') {
+			token = parts[1]
+		}
+	}
 
 	if (!token) {
 		return res.status(401).send("no auth header provided")
