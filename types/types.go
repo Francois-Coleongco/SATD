@@ -5,6 +5,15 @@ import "time"
 // constants
 const MAX_PROT_ATTEMPTS_BEFORE_REAUTH = 4
 
+type DashCreds struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type JWT struct {
+	Token string `json:"token"`
+}
+
 type AgentInfo struct { // heartbeat data
 	AgentID       string
 	AgentIP       string

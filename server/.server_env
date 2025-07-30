@@ -1,1 +1,5 @@
 ELASTIC_API_KEY=Q2k2ZUlKZ0JfWUZtN3dWOTRwcUk6LUhUQ1EzRGZfZVFpQmF3QXc4NWZRZw==
+DASHBOARD_SERVER_AUTH_ADDR=https://localhost:3000/login
+DASHBOARD_SERVER_PROT_ADDR=https://localhost:3000/add-dashboard-info
+NODEJS_USER=admin
+NODEJS_PASS=awnoidroppeditinthewater

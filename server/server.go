@@ -3,6 +3,9 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
+	"crypto/x509"
+
+	// "crypto/x509"
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
@@ -17,6 +20,7 @@ import (
 	"net"
 
 	pb "SATD/network_comms/v1"
+	"SATD/server/auth"
 	"SATD/types"
 
 	"github.com/elastic/go-elasticsearch/v9"
@@ -36,14 +40,17 @@ var (
 	utcTime        string
 )
 
-// apis
+// auth types
 var (
 	dashboardServerProtAddr string
 	dashboardServerAuthAddr string
 	dashboardJWT            string
-	dashboardUser           string
-	dashboardPswd           string
+	dashClient              *http.Client
+	dashUserCreds           types.DashCreds
+)
 
+// apis
+var (
 	elasticApiKey string
 	esClient      *elasticsearch.Client
 )
@@ -82,14 +89,14 @@ func healthCheck(agentID string, agentIP string) types.AgentInfo {
 	)
 
 	if err != nil {
-		fmt.Println("bad ES search for SrcIPs")
+		log.Println("bad ES search for SrcIPs")
 		return types.AgentInfo{}
 	}
 
 	data, err := io.ReadAll(res.Body)
 
 	if err != nil {
-		fmt.Println("couldn't ReadAll res.Body")
+		log.Println("couldn't ReadAll res.Body")
 		return types.AgentInfo{}
 	}
 
@@ -98,7 +105,7 @@ func healthCheck(agentID string, agentIP string) types.AgentInfo {
 	err = json.Unmarshal(data, &r)
 
 	if err != nil {
-		fmt.Println("couldn't unmarshal SrcIP results into ESResponse r")
+		log.Println("couldn't unmarshal SrcIP results into ESResponse r")
 		return types.AgentInfo{}
 	}
 
@@ -115,30 +122,14 @@ func healthCheck(agentID string, agentIP string) types.AgentInfo {
 			// inf.UniqueIPs[hit.Source.SrcIP] = ipCheckAbuseIPDB(hit.Source.SrcIP)
 			inf.UniqueIPs[hit.Source.SrcIP] = 1
 		}
-		fmt.Println("adding unique ip: ", hit.Source.SrcIP)
+		log.Println("adding unique ip: ", hit.Source.SrcIP)
 	}
 
 	return inf
 
 }
 
-func authToDash(attempts int) {
-
-	for i := 0; i < attempts; i++ {
-
-		req, err := http.NewRequest("POST", dashboardServerAuthAddr, nil)
-
-		if err != nil {
-			log.Println("failed authToDash")
-			continue
-		}
-
-		req.Body // get the jwt from here
-
-	}
-}
-
-func sendBeatToDash(agentID string, inf types.AgentInfo) {
+func sendBeatToDash(agentID string, inf *types.AgentInfo) {
 
 	// type AgentInfo struct { // heartbeat data
 	// 	AgentIP       string
@@ -162,22 +153,31 @@ func sendBeatToDash(agentID string, inf types.AgentInfo) {
 
 	reader := bytes.NewReader(jsonBeat)
 
-	attempts := 0
-
-	for attempts < types.MAX_PROT_ATTEMPTS_BEFORE_REAUTH {
-		r, err := http.NewRequest("POST", dashboardServerProtAddr, reader)
-		r.Header.Set("Authorization-Header", "Bearer "+dashboardJWT)
+	for attempts := 0; attempts < types.MAX_PROT_ATTEMPTS_BEFORE_REAUTH; attempts++ {
+		req, err := http.NewRequest("POST", dashboardServerProtAddr, reader)
+		reader.Seek(0, io.SeekStart)
 
 		if err != nil {
 			log.Printf("could not send heartbeat to protected endpoint, error thrown: %s\n", err)
 		}
 
-		if r.Response.StatusCode == 200 {
-			break
-		} else if r.Response.StatusCode == 401 {
-			log.Printf("was unauthorized when attempting to send heartbeat")
-			authToDash(4)
+		req.Header.Set("Authorization", "Bearer "+dashboardJWT)
+
+		res, err := dashClient.Do(req)
+
+		if err != nil {
+			log.Printf("unable to get response for dashClient, error thrown: %s", err)
+			continue
 		}
+
+		if res.StatusCode == 200 {
+			fmt.Println("SUPPOSED TO BREAK OUT HEREEE")
+			break
+		} else if res.StatusCode == 401 {
+			log.Printf("was unauthorized when attempting to send heartbeat")
+			auth.AuthToDash(dashClient, 4, dashboardServerAuthAddr, dashUserCreds, &dashboardJWT)
+		}
+
 		time.Sleep(time.Millisecond * 250)
 	}
 }
@@ -194,7 +194,7 @@ func processHeartbeat(data []byte) { // data is the heartbeat data
 	agentsMap[agentID] = inf
 	agentsMapMutex.Unlock()
 
-	sendBeatToDash(agentID, inf)
+	sendBeatToDash(agentID, &inf)
 }
 
 func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
@@ -220,7 +220,7 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 
 	for {
 
-		fmt.Println("supposed to read here")
+		log.Println("supposed to read here")
 		netDat, err := stream.Recv()
 
 		if err == io.EOF {
@@ -236,6 +236,7 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 		data := netDat.GetPayload()
 
 		if netDat.GetIsHeartbeat() {
+			fmt.Println("this was a heartbeat")
 			go processHeartbeat(data)
 			continue
 		}
@@ -261,14 +262,14 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 
 		latencyLogger.Printf("%d ms", latency.Milliseconds()) // do the math of averaging after running to not interfere with latency calculations
 
-		fmt.Printf("%s %s, %s, %s, %s, %s, %s\n", packetMetaData.AgentID, packetMetaData.SrcIP, packetMetaData.DstIP, packetMetaData.SrcPort, packetMetaData.DstPort, packetMetaData.Protocol, packetMetaData.Timestamp)
+		log.Printf("%s %s, %s, %s, %s, %s, %s\n", packetMetaData.AgentID, packetMetaData.SrcIP, packetMetaData.DstIP, packetMetaData.SrcPort, packetMetaData.DstPort, packetMetaData.Protocol, packetMetaData.Timestamp)
 
 		packetMetaData.AgentIP = agentIP
 
 		pData, err := json.Marshal(packetMetaData)
 
 		if err != nil {
-			fmt.Printf("error serializing to json, error thrown: %s\n", err)
+			log.Printf("error serializing to json, error thrown: %s\n", err)
 		}
 
 		esClient.Index(utcTime, bytes.NewReader(pData))
@@ -283,9 +284,9 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 func heartbeatCheck() {
 	for {
 		currTime := time.Now()
-		fmt.Println("checking beat")
+		log.Println("checking beat")
 		agentsMapMutex.Lock()
-		fmt.Println("I GOT A LOCK YAYYYYY")
+		log.Println("I GOT A LOCK YAYYYYY")
 
 		for agent, agentData := range agentsMap {
 			if agentData.LastCheckIn.IsZero() {
@@ -330,13 +331,16 @@ func initTLS() credentials.TransportCredentials {
 	})
 
 	return creds
-
 }
 
 func initializeEnvs() {
 	dashboardServerProtAddr = os.Getenv("DASHBOARD_SERVER_PROT_ADDR")
 	dashboardServerAuthAddr = os.Getenv("DASHBOARD_SERVER_AUTH_ADDR")
-
+	dashboardServerAuthAddr = os.Getenv("DASHBOARD_SERVER_AUTH_ADDR")
+	dashUserCreds.Username = os.Getenv("NODEJS_USER")
+	fmt.Println("node user was ", dashUserCreds.Username)
+	dashUserCreds.Password = os.Getenv("NODEJS_PASS")
+	fmt.Println("node pass was ", dashUserCreds.Password)
 	elasticApiKey = os.Getenv("ELASTIC_API_KEY")
 }
 
@@ -347,11 +351,33 @@ func main() {
 	agentsMap = make(map[string]types.AgentInfo)
 
 	godotenv.Load(".server_env")
-
 	initLogger()
+	initTLS()
 	initializeEnvs()
 
-	var err error
+	cert, err := os.ReadFile("node_cert.pem")
+
+	if err != nil {
+		log.Fatalf("couldn't open node_cert.pem, error thrown: %s", err)
+	}
+
+	caCertPool := x509.NewCertPool()
+
+	caCertPool.AppendCertsFromPEM(cert)
+
+	tlsConfig := &tls.Config{
+		RootCAs: caCertPool,
+	}
+
+	dashClient = &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+		},
+	}
+
+	if auth.AuthToDash(dashClient, 4, dashboardServerAuthAddr, dashUserCreds, &dashboardJWT) != nil {
+		return
+	}
 
 	esClient, err = elasticsearch.NewClient(elasticsearch.Config{
 		APIKey: elasticApiKey,
@@ -359,7 +385,7 @@ func main() {
 
 	go heartbeatCheck()
 
-	fmt.Println("made it after")
+	log.Println("made it after")
 	s := grpc.NewServer(grpc.Creds(initTLS()))
 
 	lis, err := net.Listen("tcp", ":8080")

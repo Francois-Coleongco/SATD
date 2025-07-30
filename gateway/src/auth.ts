@@ -1,16 +1,16 @@
 import bcrypt from 'bcrypt'
 import { Client } from 'pg'
 import pool from './db'
-import { Request, Response } from 'express'
+import { NextFunction, Request, Response } from 'express'
 import jsonwebtoken from 'jsonwebtoken'
 import { JwtPayload } from './types'
 
 
-export const authMiddleware = (req: Request, res: Response) => {
+export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
 	const authHeader = req.headers.authorization
 	var token = req.cookies.jwt
 
-	if (authHeader) {
+	if (!token && authHeader) {
 		console.log("no auth header, attempting to find a token")
 		const parts = authHeader.split(' ')
 
@@ -19,14 +19,12 @@ export const authMiddleware = (req: Request, res: Response) => {
 		}
 	}
 
-	if (!token) {
-		return res.status(401).send("no auth header provided")
-	}
+	console.log("got this token: ", token)
 
 	try {
 		const decoded = jsonwebtoken.verify(token, String(process.env.SECRET_JWT_KEY)) as JwtPayload
-
 		res.locals.user = { username: decoded.username }
+		next();
 	} catch {
 		return res.status(401).send("WHO DA HELL IS THIS GUY???? INVALID TOKEN!!!!")
 	}
