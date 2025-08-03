@@ -9,6 +9,7 @@ SATD consists of:
 - **Go-based Server**: A concurrent, gRPC-powered central node that ingests telemetry data from agents and performs preliminary threat detection.
 - **Go-based Agent**: A system-level daemon that observes host behavior and transmits metadata to the server.
 - **Node.js Dashboard**: A TypeScript-based UI server intended to display summaries and real-time system statuses.
+- **PostgreSQL DB (Dockerized)**: Stores password hashes for the end users of the Node.js API
 - **Elasticsearch (Dockerized)**: Stores logs and metadata for deep inspection and manual or automated analysis.
 
 This architecture enables scalable, real-time monitoring of networked systems with extensible data pipelines for both security analysis and operational visibility.
@@ -23,8 +24,8 @@ This architecture enables scalable, real-time monitoring of networked systems wi
 | Agent          | Go, gRPC                               |
 | Dashboard      | Node.js, TypeScript, Express           |
 | Data Backend   | Elasticsearch (via Docker)             |
-| Containerization | Docker (for Elasticsearch and possibly others) |
-| Transport      | gRPC (TLS optional)                    |
+| Containerization | Docker (for Elasticsearch and PostgreSQL) |
+| Transport      | gRPC and REST (with TLS)                    |
 | Observability  | Log messages, Elastic logs, Heartbeats |
 
 ---
@@ -45,7 +46,7 @@ This architecture enables scalable, real-time monitoring of networked systems wi
 - Stores logs and metrics for longer-term retention and advanced querying.
 - Can be paired with Kibana for visualization.
 
-### 4. Node.js Dashboard (WIP/Optional)
+### 4. Node.js Dashboard (WIP)
 - Provides a web UI for summarizing system status.
 - Queries the Go server or Elasticsearch for aggregated data.
 
