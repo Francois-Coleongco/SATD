@@ -1,5 +1,9 @@
 # SATD - Server Agent Threat Detection
 
+
+https://github.com/user-attachments/assets/3d320bd8-0b21-490e-86dd-02a3154ea05a
+
+
 SATD is a distributed, concurrent threat detection system written primarily in Go, designed to monitor and analyze activity across multiple systems in real-time. It leverages lightweight agents, a central server, a Node.js-based dashboard, and Elasticsearch for deep analytics.
 
 ## 🌐 Overview
