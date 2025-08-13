@@ -144,6 +144,8 @@ func sendBeatToDash(agentID string, inf *types.AgentInfo) {
 
 	inf.AgentID = agentID
 
+	fmt.Println("this is info being sent: ", inf)
+
 	jsonBeat, err := json.Marshal(inf)
 
 	if err != nil {
@@ -162,6 +164,7 @@ func sendBeatToDash(agentID string, inf *types.AgentInfo) {
 		}
 
 		req.Header.Set("Authorization", "Bearer "+dashboardJWT)
+		req.Header.Set("Content-Type", "application/json")
 
 		res, err := dashClient.Do(req)
 

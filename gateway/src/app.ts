@@ -74,6 +74,7 @@ app.post('/login', async (req, res) => {
 
 
 app.post('/add-dashboard-info', authMiddleware, async (req, res) => {
+	console.log("hit this endpoint: ", req.body)
 	return res.status(200).send("SUCCESSFUL SEND DATA");
 })
 
