@@ -35,12 +35,6 @@ app.use(session({
 app.use(express.json())
 app.use(cookieParser())
 
-app.use((req, res, next) => {
-	console.log('Session:', req.session);
-	console.log('Cookies:', req.cookies);
-	next();
-});
-
 app.post('/login', async (req, res) => {
 
 	// no need for csrf because we're using jwts that are httponly
@@ -48,8 +42,6 @@ app.post('/login', async (req, res) => {
 	const username = req.body.username
 	const password = req.body.password
 
-	console.log("this was the username: ", username)
-	console.log("this was the password: ", password)
 	const exists = await userExists(username, password)
 
 	if (!exists) {
@@ -61,7 +53,7 @@ app.post('/login', async (req, res) => {
 
 	if (secretKey === undefined) {
 		res.status(500).send("HUHHHH?")
-		console.log("no SECRET KE WHAHTHA")
+		console.log("no SECRET KEY WHAHTHA")
 		return
 	}
 
@@ -74,7 +66,7 @@ app.post('/login', async (req, res) => {
 
 
 app.post('/add-dashboard-info', authMiddleware, async (req, res) => {
-	console.log("hit this endpoint: ", req.body)
+	console.log(req.body)
 	return res.status(200).send("SUCCESSFUL SEND DATA");
 })
 

@@ -110,6 +110,8 @@ func healthCheck(agentID string, agentIP string) types.AgentInfo {
 	}
 
 	inf := types.AgentInfo{
+		AgentID:       agentID,
+		AgentIP:       agentIP,
 		ThreatSummary: "", // include possibly scanned if any
 		Health:        "", // note this is called within a lock
 		UniqueIPs:     make(map[string]int),
@@ -121,8 +123,8 @@ func healthCheck(agentID string, agentIP string) types.AgentInfo {
 		if !exists {
 			// inf.UniqueIPs[hit.Source.SrcIP] = ipCheckAbuseIPDB(hit.Source.SrcIP)
 			inf.UniqueIPs[hit.Source.SrcIP] = 1
+			log.Println("adding unique ip: ", hit.Source.SrcIP)
 		}
-		log.Println("adding unique ip: ", hit.Source.SrcIP)
 	}
 
 	return inf
@@ -185,10 +187,9 @@ func sendBeatToDash(agentID string, inf *types.AgentInfo) {
 	}
 }
 
-func processHeartbeat(data []byte) { // data is the heartbeat data
+func processHeartbeat(data []byte, agentIP string) { // data is the heartbeat data
 	agentID := string(data)
 	agentsMapMutex.Lock()
-	agentIP := agentsMap[agentID].AgentIP
 	agentsMapMutex.Unlock()
 
 	inf := healthCheck(agentID, agentIP)
@@ -240,7 +241,7 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 
 		if netDat.GetIsHeartbeat() {
 			fmt.Println("this was a heartbeat")
-			go processHeartbeat(data)
+			go processHeartbeat(data, agentIP)
 			continue
 		}
 
