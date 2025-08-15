@@ -1,10 +1,10 @@
 # SATD - Server Agent Threat Detection
 
 <p align="center">
-  <a href="https://raw.githubusercontent.com/Francois-Coleongco/SATD/main/terminal_SATD.mp4">
+  <a href="https://raw.githubusercontent.com/Francois-Coleongco/SATD/main/demos/terminal_SATD.mp4">
     <img src="terminal_preview.png" width="45%">
   </a>
-  <a href="https://raw.githubusercontent.com/Francois-Coleongco/SATD/main/elastic_SATD.mp4">
+  <a href="https://raw.githubusercontent.com/Francois-Coleongco/SATD/main/demos/elastic_SATD.mp4">
     <img src="elastic_preview.png" width="45%">
   </a>
 </p>
