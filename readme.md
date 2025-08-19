@@ -56,6 +56,15 @@ This architecture enables scalable, real-time monitoring of networked systems wi
 
 ---
 
+## Dependencies
+
+```
+libpcap dev library (sudo dnf install libpcap-devel)
+Go 1.24.5+
+Node v22.18.0
+npm 10.9.3+
+```
+
 ## 🗂️ Architecture Diagram
 
 ```plaintext
