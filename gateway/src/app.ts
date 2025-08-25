@@ -8,6 +8,8 @@ import { AgentInfo } from './types'
 import cookieParser from 'cookie-parser'
 import session from 'express-session'
 import crypto from 'crypto'
+import cors from 'cors'
+import { doubleCsrf } from 'csrf-csrf'
 
 interface JwtPayload {
 	username: string;
@@ -17,8 +19,10 @@ interface JwtPayload {
 
 const app = express()
 
-let agentsMap: Map<string, AgentInfo> = new Map(); // id, AgentData
-
+app.use(cors({
+	origin: "http://localhost:5173",
+	credentials: true
+}));
 
 app.use(session({
 	secret: crypto.randomBytes(32).toString('hex'),
@@ -27,7 +31,7 @@ app.use(session({
 	cookie: {
 		secure: true,
 		httpOnly: true,
-		sameSite: 'strict',
+		sameSite: 'lax',
 		maxAge: 24 * 60 * 60 * 1000
 	}
 }))
@@ -35,9 +39,42 @@ app.use(session({
 app.use(express.json())
 app.use(cookieParser())
 
-app.post('/login', async (req, res) => {
+let clients: express.Response[] = []
+let agentsMap: Map<string, AgentInfo> = new Map(); // id, AgentData
 
-	// no need for csrf because we're using jwts that are httponly
+const doubleCsrfUtilities = doubleCsrf({
+	getSecret: () => "Secret", // A function that optionally takes the request and returns a secret
+	getSessionIdentifier: (req) => req.session.id, // A function that returns the unique identifier for the request
+	cookieName: "__Host-psifi.x-csrf-token", // The name of the cookie to be used, recommend using Host prefix.
+	cookieOptions: {
+		sameSite: "strict",
+		secure: true,
+		httpOnly: true,
+	},
+	size: 32, // The size of the random value used to construct the message used for hmac generation
+	ignoredMethods: ["GET", "HEAD", "OPTIONS"], // A list of request methods that will not be protected.
+	getCsrfTokenFromRequest: (req) => req.headers["x-csrf-token"], // A function that returns the token from the request
+	skipCsrfProtection: undefined
+});
+
+
+const csrf = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+	try {
+		doubleCsrfUtilities.validateRequest(req);
+		next();
+	} catch (err) {
+		res.status(403).json({ error: 'Invalid CSRF token' });
+	}
+};
+
+
+app.get('/csrf', (req, res) => {
+	const csrfToken = doubleCsrfUtilities.generateCsrfToken(req, res)
+	return res.json({ csrfToken: csrfToken })
+})
+
+
+app.post('/login', csrf, async (req, res) => {
 
 	const username = req.body.username
 	const password = req.body.password
@@ -61,7 +98,7 @@ app.post('/login', async (req, res) => {
 
 	res.cookie('jwt', token)
 
-	return res.json({ token })
+	return res.json({ token: token })
 })
 
 
@@ -70,18 +107,17 @@ app.post('/add-dashboard-info', authMiddleware, async (req, res) => {
 	return res.status(200).send("SUCCESSFUL SEND DATA");
 })
 
+app.get('/dashboard-stream', authMiddleware, (req, res) => {
+	res.setHeader('Content-Type', 'text/event-stream');
+	res.setHeader('Cache-Control', 'no-cache');
+	res.setHeader('Connection', 'keep-alive');
 
-app.get('/fetch-dashboard-info', authMiddleware, async (req, res) => {
+	clients.push(res);
 
-	// need to repopulate if there was a change, how do we know if there was a change?
-	for (const [agentID, agentInfo] of agentsMap) {
-	}
-
-	// return only the updated ones
-
-	return res.status(200).send(`welcome to dashboard endpoint`)
-
-})
+	req.on('close', () => {
+		clients = clients.filter(c => c !== res);
+	});
+});
 
 
 const options = {

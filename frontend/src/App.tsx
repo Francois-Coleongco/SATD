@@ -8,26 +8,39 @@ function App() {
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
 
-	const sendCreds = async () => {
+	const authenticate = async () => {
 		console.log("sending cresd", username, password)
 
-		fetch("https://localhost:3000/token", {
-			method: "POST",
+		const csrfResp = await fetch('https://localhost:3000/csrf', {
+			method: 'GET',
 			headers: {
-				"Content-Type": "application/json",
+				'Content-Type': 'application/json',
+			}
+		});
+		const csrfData = await csrfResp.json()
+
+		const authResp = await fetch('https://localhost:3000/login', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-CSRF-Token': csrfData.csrfToken
 			},
 			body: JSON.stringify({ username: username, password: password })
-		}).then(response => {
-			if (!response.ok) {
-				setAuthed(false);
-				setBadAuthed(true);
-				return;
-			}
-		}).then(data => {
-			console.log("SUCCESSFUL LOGIN", data);
-		}).catch(error => {
-			console.error("error logging in:", error);
-		})
+		});
+
+		if (!authResp.ok) {
+			setAuthed(false);
+			setBadAuthed(true);
+			return "";
+		}
+
+		const authData = await authResp.json()
+
+		return authData.token
+	}
+
+	const updateAgents = async () => {
+
 
 	}
 
@@ -130,7 +143,7 @@ function App() {
 						<button
 							type='button'
 							className="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-							onClick={sendCreds}
+							onClick={authenticate}
 						>
 							Login
 						</button>
