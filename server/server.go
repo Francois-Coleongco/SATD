@@ -21,6 +21,7 @@ import (
 
 	pb "SATD/network_comms/v1"
 	"SATD/server/auth"
+	"SATD/server/serveranalyzer"
 	"SATD/types"
 
 	"github.com/elastic/go-elasticsearch/v9"
@@ -53,6 +54,9 @@ var (
 var (
 	elasticApiKey string
 	esClient      *elasticsearch.Client
+
+	ipdbApiKey string
+	ipdbClient *http.Client
 )
 
 type serverFeederServer struct {
@@ -122,7 +126,7 @@ func healthCheck(agentID string, agentIP string) types.AgentInfo {
 		_, exists := inf.UniqueIPs[hit.Source.SrcIP]
 		if !exists {
 			// inf.UniqueIPs[hit.Source.SrcIP] = ipCheckAbuseIPDB(hit.Source.SrcIP)
-			inf.UniqueIPs[hit.Source.SrcIP] = 1
+			inf.UniqueIPs[hit.Source.SrcIP], err = serveranalyzer.IpCheckAbuseIPDB(hit.Source.SrcIP, &ipdbApiKey, ipdbClient)
 			log.Println("adding unique ip: ", hit.Source.SrcIP)
 		}
 	}
@@ -189,9 +193,6 @@ func sendBeatToDash(agentID string, inf *types.AgentInfo) {
 
 func processHeartbeat(data []byte, agentIP string) { // data is the heartbeat data
 	agentID := string(data)
-	agentsMapMutex.Lock()
-	agentsMapMutex.Unlock()
-
 	inf := healthCheck(agentID, agentIP)
 
 	agentsMapMutex.Lock()
@@ -374,6 +375,12 @@ func main() {
 	}
 
 	dashClient = &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+		},
+	}
+
+	ipdbClient = &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: tlsConfig,
 		},
