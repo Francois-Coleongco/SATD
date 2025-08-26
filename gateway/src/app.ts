@@ -11,11 +11,11 @@ import crypto from 'crypto'
 import cors from 'cors'
 import { doubleCsrf } from 'csrf-csrf'
 
-interface JwtPayload {
-	username: string;
-	iat?: number;
-	exp?: number;
-}
+// interface JwtPayload {
+// 	username: string;
+// 	iat?: number;
+// 	exp?: number;
+// }
 
 const app = express()
 
@@ -31,7 +31,7 @@ app.use(session({
 	cookie: {
 		secure: true,
 		httpOnly: true,
-		sameSite: 'lax',
+		sameSite: 'none',
 		maxAge: 24 * 60 * 60 * 1000
 	}
 }))
@@ -96,14 +96,21 @@ app.post('/login', csrf, async (req, res) => {
 
 	const token = jsonwebtoken.sign({ username }, secretKey, { expiresIn: '1h' })
 
-	res.cookie('jwt', token)
+	res.cookie('jwt', token, {
+		httpOnly: true,
+		secure: true,
+		sameSite: "none",
+		maxAge: 3600 * 1000
+	})
 
 	return res.json({ token: token })
 })
 
 
 app.post('/add-dashboard-info', authMiddleware, async (req, res) => {
-	console.log(req.body)
+	clients.forEach(client => client.write(`data: ${JSON.stringify(req.body)}\n\n`));
+
+	console.log("added data")
 	return res.status(200).send("SUCCESSFUL SEND DATA");
 })
 

@@ -4,17 +4,20 @@ DATA FROM AUTH ENDPOINT WAS:
 called Feed
 called Feed
 this was a heartbeat
-this is info being sent:  &{bagel ::1   map[2604:3d09:927c:2340::fa36:1 2607:f8b0:4017:34::8:1] 2025-08-15 00:04:54.432766555 +0000 UTC}
+before first err
+before second err
+why are we returning in here?  0 Get "https://api.abuseipdb.com/api/v2/check?ipAddress=2604%3A3d09%3A927c%3A2340%3A%3Afa36": tls: failed to verify certificate: x509: certificate signed by unknown authority
+before first err
+before second err
+why are we returning in here?  0 Get "https://api.abuseipdb.com/api/v2/check?ipAddress=2607%3Af8b0%3A4017%3A34%3A%3A8": tls: failed to verify certificate: x509: certificate signed by unknown authority
+this is info being sent:  &{bagel ::1  map[2604:3d09:927c:2340::fa36:0 2607:f8b0:4017:34::8:0] 2025-08-26 17:38:38.058651041 +0000 UTC}
 SUPPOSED TO BREAK OUT HEREEE
 this was a heartbeat
-this is info being sent:  &{bagel ::1   map[2604:3d09:927c:2340::fa36:1 2607:f8b0:4017:34::8:1] 2025-08-15 00:04:58.418696296 +0000 UTC}
-SUPPOSED TO BREAK OUT HEREEE
-this was a heartbeat
-this is info being sent:  &{bagel ::1   map[2604:3d09:927c:2340::fa36:1 2607:f8b0:4017:34::8:1] 2025-08-15 00:05:02.41493694 +0000 UTC}
-SUPPOSED TO BREAK OUT HEREEE
-this was a heartbeat
-this is info being sent:  &{bagel ::1   map[2604:3d09:927c:2340::fa36:1 2607:f8b0:4017:34::8:1] 2025-08-15 00:05:06.418048561 +0000 UTC}
-SUPPOSED TO BREAK OUT HEREEE
-this was a heartbeat
-this is info being sent:  &{bagel ::1   map[2604:3d09:927c:2340::fa36:1 2607:f8b0:4017:34::8:1] 2025-08-15 00:05:10.406199642 +0000 UTC}
+before first err
+before second err
+why are we returning in here?  0 Get "https://api.abuseipdb.com/api/v2/check?ipAddress=2604%3A3d09%3A927c%3A2340%3A%3Afa36": tls: failed to verify certificate: x509: certificate signed by unknown authority
+before first err
+before second err
+why are we returning in here?  0 Get "https://api.abuseipdb.com/api/v2/check?ipAddress=2607%3Af8b0%3A4017%3A34%3A%3A8": tls: failed to verify certificate: x509: certificate signed by unknown authority
+this is info being sent:  &{bagel ::1  map[2604:3d09:927c:2340::fa36:0 2607:f8b0:4017:34::8:0] 2025-08-26 17:38:42.069423709 +0000 UTC}
 SUPPOSED TO BREAK OUT HEREEE

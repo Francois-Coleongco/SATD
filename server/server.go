@@ -117,7 +117,6 @@ func healthCheck(agentID string, agentIP string) types.AgentInfo {
 		AgentID:       agentID,
 		AgentIP:       agentIP,
 		ThreatSummary: "", // include possibly scanned if any
-		Health:        "", // note this is called within a lock
 		UniqueIPs:     make(map[string]int),
 		LastCheckIn:   time.Now().UTC(),
 	}
@@ -125,7 +124,6 @@ func healthCheck(agentID string, agentIP string) types.AgentInfo {
 	for _, hit := range r.Hits.Hits {
 		_, exists := inf.UniqueIPs[hit.Source.SrcIP]
 		if !exists {
-			// inf.UniqueIPs[hit.Source.SrcIP] = ipCheckAbuseIPDB(hit.Source.SrcIP)
 			inf.UniqueIPs[hit.Source.SrcIP], err = serveranalyzer.IpCheckAbuseIPDB(hit.Source.SrcIP, &ipdbApiKey, ipdbClient)
 			log.Println("adding unique ip: ", hit.Source.SrcIP)
 		}

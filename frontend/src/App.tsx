@@ -25,13 +25,18 @@ function App() {
 				'Content-Type': 'application/json',
 				'X-CSRF-Token': csrfData.csrfToken
 			},
-			body: JSON.stringify({ username: username, password: password })
+			body: JSON.stringify({ username: username, password: password }),
+			credentials: "include"
 		});
 
 		if (!authResp.ok) {
+			console.log(authResp)
 			setAuthed(false);
 			setBadAuthed(true);
 			return "";
+		} else {
+			setAuthed(true)
+			updateAgents()
 		}
 
 		const authData = await authResp.json()
@@ -40,6 +45,13 @@ function App() {
 	}
 
 	const updateAgents = async () => {
+		const evtSource = new EventSource("https://localhost:3000/dashboard-stream", {
+			withCredentials: true
+		});
+		evtSource.onmessage = (event) => {
+			const parsedData = JSON.parse(event.data)
+			console.log("parsedData", parsedData)
+		}
 
 
 	}

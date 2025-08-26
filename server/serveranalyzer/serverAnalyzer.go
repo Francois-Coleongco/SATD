@@ -30,20 +30,27 @@ func IpCheckAbuseIPDB(ip string, apiKey *string, ipdbClient *http.Client) (int, 
 	req.Header.Add("Key", *apiKey)
 	req.Header.Add("Accept", "application/json")
 
+	fmt.Println("before first err")
 	if err != nil {
 		return score, err
 	}
 
 	resp, err := ipdbClient.Do(req)
 
+	fmt.Println("before second err")
+
 	if err != nil {
+		fmt.Println("why are we returning in here? ", score, err)
 		return score, err
 	}
+
+	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		return score, fmt.Errorf("received non-200 status code for ipdb lookup")
 	}
 
+	fmt.Println("was 200")
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return score, err
@@ -54,8 +61,10 @@ func IpCheckAbuseIPDB(ip string, apiKey *string, ipdbClient *http.Client) (int, 
 	if err != nil {
 		return score, err
 	}
+	fmt.Println("could marshal")
 
 	score = parsed.Data.AbuseConfidenceScore
+	fmt.Println("score was: ", score)
 	return score, nil
 
 }

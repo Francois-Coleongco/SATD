@@ -18,7 +18,6 @@ type AgentInfo struct { // heartbeat data
 	AgentID       string
 	AgentIP       string
 	ThreatSummary string
-	Health        string
 	UniqueIPs     map[string]int // ips, AbuseIPDB score. these ips are by the day
 	LastCheckIn   time.Time
 }
