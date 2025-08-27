@@ -15,11 +15,10 @@ type JWT struct {
 }
 
 type AgentInfo struct { // heartbeat data
-	AgentID       string
-	AgentIP       string
-	ThreatSummary string
-	UniqueIPs     map[string]int // ips, AbuseIPDB score. these ips are by the day
-	LastCheckIn   time.Time
+	AgentID     string
+	AgentIP     string
+	UniqueIPs   map[string]int // ips, AbuseIPDB score. these ips are by the day
+	LastCheckIn time.Time
 }
 
 type PacketMeta struct {

@@ -4,7 +4,6 @@ import './App.css'
 interface AgentData {
 	AgentID: string
 	AgentIP: string
-	ThreatSummary: string
 	UniqueIPs: Map<string, number> // ips, AbuseIPDB score. these ips are by the day
 	LastCheckIn: Date
 }
@@ -75,7 +74,6 @@ function App() {
 			const agentData: AgentData = {
 				AgentID: parsedData.AgentID || 'Unknown',
 				AgentIP: parsedData.AgentIP || 'Unknown',
-				ThreatSummary: parsedData.ThreatSummary || 'No summary',
 				UniqueIPs: new Map(Object.entries(parsedData.UniqueIPs || {})),
 				LastCheckIn: lastCheckIn,
 			};
@@ -101,43 +99,49 @@ function App() {
 
 
 	useEffect(() => {
-		updateAgents()
+		if (authed) {
+			updateAgents()
+		}
 	}, [authed])
 
 	if (authed) {
 		return (
-			<div className="min-h-screen flex flex-col items-center p-8 bg-gray-100">
+			< div className="min-h-screen flex flex-col items-center p-8 bg-gray-100" >
 				<h1 className="text-4xl font-bold text-gray-800 mb-8">Agent Dashboard</h1>
-				<div className="w-full max-w-6xl bg-black rounded-lg shadow-lg overflow-hidden">
-					<div className="grid grid-cols-6 bg-gray-200 text-gray-700 font-semibold py-4 px-6">
+				test
+				<div className="w-full max-w-6xl bg-white rounded-lg shadow-lg overflow-hidden">
+					{/* Header */}
+					<div className="grid grid-cols-4 py-4 px-6 bg-gray-900 text-white font-bold text-sm uppercase tracking-wider">
 						<div>Agent ID</div>
 						<div>Agent IP</div>
 						<div>Unique IPs</div>
-						<div>Threat Summary</div>
 						<div>Last Check-In</div>
 					</div>
+
+					{/* Data Rows */}
 					{[...agents.values()].map((agent) => (
 						<div
-							className="grid grid-cols-6 py-4 px-6 border-b border-gray-200 hover:bg-gray-800"
+							className="grid grid-cols-4 gap-4 py-4 px-6 text-sm border-b border-gray-200 hover:bg-gray-100 transition-colors duration-200"
 							key={agent.AgentID}
 						>
-							<div
-								className={`font-semibold text-center rounded-lg py-1 px-2 ${agent.ThreatSummary === 'Low'
-									? 'bg-green-100 text-green-700'
-									: agent.ThreatSummary === 'Warning'
-										? 'bg-yellow-100 text-yellow-700'
-										: agent.ThreatSummary === 'High' ? 'bg-red-100 text-red-700' : 'bg-purple-100 text-purple-700'
-									}`}
-							>
-								{agent.ThreatSummary}
+							<div className="text-gray-800 font-medium break-all">{agent.AgentID}</div>
+							<div className="text-gray-700 break-all">{agent.AgentIP}</div>
+
+							{/* Unique IPs */}
+							<div className="space-y-1 max-h-32 overflow-y-auto pr-2">
+								{[...agent.UniqueIPs.entries()].map(([ip, score]) => (
+									<div key={ip} className="flex justify-between text-gray-600 text-xs border-b border-gray-100 pb-1">
+										<span className="font-mono">{ip}</span>
+										<span className="text-right font-semibold">{score}</span>
+									</div>
+								))}
 							</div>
-							<div>{agent.AgentIP}</div>
-							<div>{agent.UniqueIPs}</div>
-							<div>{agent.LastCheckIn.toString()}</div>
+
+							<div className="text-gray-600">{agent.LastCheckIn.toLocaleString()}</div>
 						</div>
 					))}
 				</div>
-			</div>
+			</div >
 		);
 	} else {
 		return (

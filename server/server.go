@@ -114,11 +114,10 @@ func healthCheck(agentID string, agentIP string) types.AgentInfo {
 	}
 
 	inf := types.AgentInfo{
-		AgentID:       agentID,
-		AgentIP:       agentIP,
-		ThreatSummary: "", // include possibly scanned if any
-		UniqueIPs:     make(map[string]int),
-		LastCheckIn:   time.Now().UTC(),
+		AgentID:     agentID,
+		AgentIP:     agentIP,
+		UniqueIPs:   make(map[string]int),
+		LastCheckIn: time.Now().UTC(),
 	}
 
 	for _, hit := range r.Hits.Hits {
@@ -128,6 +127,7 @@ func healthCheck(agentID string, agentIP string) types.AgentInfo {
 			if err != nil {
 				score = -1
 			}
+
 			inf.UniqueIPs[hit.Source.SrcIP] = score
 
 			// should instead be a tally average to get the overall score
@@ -361,6 +361,7 @@ func initializeEnvs() {
 	dashUserCreds.Password = os.Getenv("NODEJS_PASS")
 	fmt.Println("node pass was ", dashUserCreds.Password)
 	elasticApiKey = os.Getenv("ELASTIC_API_KEY")
+	ipdbApiKey = os.Getenv("IPDB_API_KEY")
 }
 
 func main() {
