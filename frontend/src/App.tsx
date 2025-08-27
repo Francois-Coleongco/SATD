@@ -1,5 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import './App.css'
+
+interface AgentData {
+	AgentID: string
+	AgentIP: string
+	ThreatSummary: string
+	UniqueIPs: Map<string, number> // ips, AbuseIPDB score. these ips are by the day
+	LastCheckIn: Date
+}
 
 function App() {
 
@@ -7,6 +15,7 @@ function App() {
 	const [badAuth, setBadAuthed] = useState(false);
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
+	const [agents, setAgents] = useState<Map<string, AgentData>>(new Map());
 
 	const authenticate = async () => {
 		console.log("sending cresd", username, password)
@@ -36,7 +45,6 @@ function App() {
 			return "";
 		} else {
 			setAuthed(true)
-			updateAgents()
 		}
 
 		const authData = await authResp.json()
@@ -51,37 +59,50 @@ function App() {
 		evtSource.onmessage = (event) => {
 			const parsedData = JSON.parse(event.data)
 			console.log("parsedData", parsedData)
-		}
+
+			let lastCheckIn: Date;
+			try {
+				lastCheckIn = new Date(parsedData.LastCheckIn);
+				if (isNaN(lastCheckIn.getTime())) {
+					console.warn(`Invalid date for AgentID ${parsedData.AgentID}: ${parsedData.LastCheckIn}`);
+					lastCheckIn = new Date(); // Fallback to current time
+				}
+			} catch (error) {
+				console.warn(`Error parsing date for AgentID ${parsedData.AgentID}: ${error}`);
+				lastCheckIn = new Date();
+			}
+
+			const agentData: AgentData = {
+				AgentID: parsedData.AgentID || 'Unknown',
+				AgentIP: parsedData.AgentIP || 'Unknown',
+				ThreatSummary: parsedData.ThreatSummary || 'No summary',
+				UniqueIPs: new Map(Object.entries(parsedData.UniqueIPs || {})),
+				LastCheckIn: lastCheckIn,
+			};
+
+			setAgents((prevAgents) => {
+				const newAgents = new Map(prevAgents);
+				newAgents.set(agentData.AgentID, agentData);
+				return newAgents;
+			});
+		};
+
+		evtSource.onerror = () => {
+			console.error('EventSource failed');
+			evtSource.close();
+		};
+
+		return () => {
+			evtSource.close();
+		};
+	};
 
 
-	}
 
-	const agents = [
-		{
-			agentID: 'AGENT001',
-			agentIP: '192.168.1.1',
-			uniqueIPs: ['192.168.1.2', '192.168.1.3'],
-			threatSummary: 'High risk - 3 threats detected',
-			health: 'Healthy',
-			lastCheckin: '2023-08-15 10:30:00',
-		},
-		{
-			agentID: 'AGENT002',
-			agentIP: '192.168.1.4',
-			uniqueIPs: ['192.168.1.5'],
-			threatSummary: 'Medium risk - 1 threat detected',
-			health: 'Warning',
-			lastCheckin: '2023-08-15 09:50:00',
-		},
-		{
-			agentID: 'AGENT003',
-			agentIP: '192.168.1.6',
-			uniqueIPs: ['192.168.1.7', '192.168.1.8', '192.168.1.9'],
-			threatSummary: 'Low risk - 0 threats detected',
-			health: 'Healthy',
-			lastCheckin: '2023-08-15 11:00:00',
-		},
-	];
+
+	useEffect(() => {
+		updateAgents()
+	}, [authed])
 
 	if (authed) {
 		return (
@@ -93,29 +114,26 @@ function App() {
 						<div>Agent IP</div>
 						<div>Unique IPs</div>
 						<div>Threat Summary</div>
-						<div>Health</div>
 						<div>Last Check-In</div>
 					</div>
-					{agents.map((agent) => (
+					{[...agents.values()].map((agent) => (
 						<div
 							className="grid grid-cols-6 py-4 px-6 border-b border-gray-200 hover:bg-gray-800"
-							key={agent.agentID}
+							key={agent.AgentID}
 						>
-							<div>{agent.agentID}</div>
-							<div>{agent.agentIP}</div>
-							<div>{agent.uniqueIPs.join(', ')}</div>
-							<div>{agent.threatSummary}</div>
 							<div
-								className={`font-semibold text-center rounded-lg py-1 px-2 ${agent.health === 'Healthy'
+								className={`font-semibold text-center rounded-lg py-1 px-2 ${agent.ThreatSummary === 'Low'
 									? 'bg-green-100 text-green-700'
-									: agent.health === 'Warning'
+									: agent.ThreatSummary === 'Warning'
 										? 'bg-yellow-100 text-yellow-700'
-										: 'bg-red-100 text-red-700'
+										: agent.ThreatSummary === 'High' ? 'bg-red-100 text-red-700' : 'bg-purple-100 text-purple-700'
 									}`}
 							>
-								{agent.health}
+								{agent.ThreatSummary}
 							</div>
-							<div>{agent.lastCheckin}</div>
+							<div>{agent.AgentIP}</div>
+							<div>{agent.UniqueIPs}</div>
+							<div>{agent.LastCheckIn.toString()}</div>
 						</div>
 					))}
 				</div>

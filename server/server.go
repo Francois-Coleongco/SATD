@@ -124,7 +124,23 @@ func healthCheck(agentID string, agentIP string) types.AgentInfo {
 	for _, hit := range r.Hits.Hits {
 		_, exists := inf.UniqueIPs[hit.Source.SrcIP]
 		if !exists {
-			inf.UniqueIPs[hit.Source.SrcIP], err = serveranalyzer.IpCheckAbuseIPDB(hit.Source.SrcIP, &ipdbApiKey, ipdbClient)
+			score, err := serveranalyzer.IpCheckAbuseIPDB(hit.Source.SrcIP, &ipdbApiKey, ipdbClient)
+			if err != nil {
+				score = -1
+			}
+			inf.UniqueIPs[hit.Source.SrcIP] = score
+
+			// should instead be a tally average to get the overall score
+			// if 0 <= score || score <= 30 {
+			// 	inf.ThreatSummary = "Low"
+			// } else if 31 <= score || score <= 60 {
+			// 	inf.ThreatSummary = "Med"
+			// } else if 61 <= score || score <= 100 {
+			// 	inf.ThreatSummary = "High"
+			// } else {
+			// 	inf.ThreatSummary = "Unknown" // (no ipdb score)
+			// }
+
 			log.Println("adding unique ip: ", hit.Source.SrcIP)
 		}
 	}
@@ -380,8 +396,9 @@ func main() {
 
 	ipdbClient = &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
+			TLSClientConfig: &tls.Config{},
 		},
+		Timeout: 10 * time.Second,
 	}
 
 	if auth.AuthToDash(dashClient, 4, dashboardServerAuthAddr, dashUserCreds, &dashboardJWT) != nil {

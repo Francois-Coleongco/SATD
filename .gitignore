@@ -1,4 +1,4 @@
 gateway/node_modules/
 frontend/node_modules/
 server/latency.log
-server/server.out
+server/server_out
