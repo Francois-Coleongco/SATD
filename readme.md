@@ -67,4 +67,29 @@ npm 10.9.3+
 [Agent (Go)] ---> [gRPC] ---> [Server (Go)] ---> [ElasticSearch (Docker)]
                                  |
                                  └--> [Dashboard (Node.js/TS)]
+```
 
+## 🌐 Environment Configuration
+
+### 🔧 `./server/.server_env` Configuration
+
+```
+ELASTIC_API_KEY=YOUR_ELASTIC_KEY
+IPDB_API_KEY=YOUR_IPDB_KEY
+DASHBOARD_SERVER_AUTH_ADDR=https://localhost:3000/login
+DASHBOARD_SERVER_PROT_ADDR=https://localhost:3000/add-dashboard-info
+NODEJS_USER=admin
+NODEJS_PASS=YOUR_ADMIN_PASSWORD
+```
+
+### 🔧 `./gateway/.env` Configuration
+
+```SECRET_JWT_KEY=YOUR_JWT_KEY
+DB_USER=sleepy
+DB_HOST=localhost # change as you see fit
+DB_NAME=satd
+DB_PASSWORD=groovy
+DB_PORT=5432
+```
+
+remember not to push these env files to the repo :)
