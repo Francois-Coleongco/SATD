@@ -17,13 +17,13 @@ type JWT struct {
 type AgentInfo struct { // heartbeat data
 	AgentID     string
 	AgentIP     string
-	UniqueIPs   map[string]int // ips, AbuseIPDB score. these ips are by the day
+	UniqueIPs   map[string]int
 	LastCheckIn time.Time
 }
 
 type PacketMeta struct {
 	AgentID   string
-	AgentIP   string
+	AgentIP   string // populated on golang server
 	SrcIP     string
 	DstIP     string
 	SrcPort   string
