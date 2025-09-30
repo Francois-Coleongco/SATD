@@ -46,8 +46,6 @@ export const userExists = async (username: string, password: string): Promise<bo
 		return isMatch;
 	}
 	catch (error) {
-		console.log("ERROR this was the username: ", username)
-		console.log("ERROR this was the password: ", password)
 		console.error("ERROR auth error: ", error)
 		return false
 	}
