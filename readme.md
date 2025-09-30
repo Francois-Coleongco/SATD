@@ -29,7 +29,7 @@ This architecture enables scalable, real-time monitoring of networked systems wi
 | Dashboard      | Node.js, TypeScript, Express           |
 | Data Backend   | Elasticsearch (via Docker)             |
 | Containerization | Docker (for Elasticsearch and possibly others) |
-| Transport      | gRPC (TLS optional)                    |
+| Transport      | gRPC (TLS encrypted)                    |
 | Observability  | Log messages, Elastic logs, Heartbeats |
 
 ---
