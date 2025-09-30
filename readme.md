@@ -50,7 +50,7 @@ This architecture enables scalable, real-time monitoring of networked systems wi
 - Stores logs and metrics for longer-term retention and advanced querying.
 - Can be paired with Kibana for visualization.
 
-### 4. Node.js Dashboard (WIP/Optional)
+### 4. Node.js / React.js Dashboard
 - Provides a web UI for summarizing system status.
 - Queries the Go server or Elasticsearch for aggregated data.
 
