@@ -126,13 +126,4 @@ app.get('/dashboard-stream', authMiddleware, (req, res) => {
 	});
 });
 
-
-const options = {
-	key: fs.readFileSync(path.join(__dirname, "../key.pem")),
-	cert: fs.readFileSync(path.join(__dirname, "../cert.pem")),
-}
-
-
-const server = https.createServer(options, app)
-
-export default server
+export default app
