@@ -76,8 +76,8 @@ app.get('/csrf', (req, res) => {
 
 app.post('/login', csrf, async (req, res) => {
 
-	const username = req.body.username
-	const password = req.body.password
+	const username: String = req.body.username
+	const password: String = req.body.password
 
 	const exists = await userExists(username, password)
 
@@ -94,7 +94,9 @@ app.post('/login', csrf, async (req, res) => {
 		return
 	}
 
-	const token = jsonwebtoken.sign({ username }, secretKey, { expiresIn: '1h' })
+	const role: string[] = username.split("-")
+
+	const token = jsonwebtoken.sign({ username, role }, secretKey, { expiresIn: '1h' })
 
 	res.cookie('jwt', token, {
 		httpOnly: true,

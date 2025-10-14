@@ -7,27 +7,21 @@ import { JwtPayload } from './types'
 
 
 export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
-	const authHeader = req.headers.authorization
 	var token = req.cookies.jwt
-
-	if (!token && authHeader) {
-		const parts = authHeader.split(' ')
-
-		if (parts.length === 2 && parts[0] == 'Bearer') {
-			token = parts[1]
-		}
-	}
 
 	try {
 		const decoded = jsonwebtoken.verify(token, String(process.env.SECRET_JWT_KEY)) as JwtPayload
+		if (decoded.role !== "user") {
+			return res.status(401).send("INVALID TOKEN!!!!")
+		}
 		res.locals.user = { username: decoded.username }
 		next();
 	} catch {
-		return res.status(401).send("WHO DA HELL IS THIS GUY???? INVALID TOKEN!!!!")
+		return res.status(401).send("INVALID TOKEN!!!!")
 	}
 }
 
-export const userExists = async (username: string, password: string): Promise<boolean> => {
+export const userExists = async (username: String, password: String): Promise<boolean> => {
 
 	try {
 		const res = await pool.query("SELECT * FROM users WHERE username=$1", [username])
@@ -52,7 +46,35 @@ export const userExists = async (username: string, password: string): Promise<bo
 
 }
 
-export const agentAuthMiddleware = () => {
+export const analysisServerAuthMiddleware = (req: Request, res: Response, next: NextFunction) => {
+
+	const authHeader = req.headers.authorization
+
+	if (authHeader === undefined) {
+		return res.status(401).send("INVALID TOKEN!!!!")
+	}
+
+	const parts = authHeader.split(' ')
+
+	var token = ""
+
+	if (parts.length === 2 && parts[0] == 'Bearer') {
+		token = parts[1]
+	}
+
+
+	try {
+		const decoded = jsonwebtoken.verify(token, String(process.env.SECRET_JWT_KEY)) as JwtPayload
+
+		if (decoded.role !== "server") {
+			return res.status(401).send("INVALID TOKEN!!!!")
+		}
+
+		res.locals.user = { username: decoded.username }
+		next();
+	} catch {
+		return res.status(401).send("INVALID TOKEN!!!!")
+	}
 
 }
 
