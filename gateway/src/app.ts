@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import https from 'https'
 import jsonwebtoken from 'jsonwebtoken'
-import { authMiddleware, userExists } from './auth'
+import { analysisServerAuthMiddleware, authMiddleware, userExists } from './auth'
 import { AgentInfo } from './types'
 import cookieParser from 'cookie-parser'
 import session from 'express-session'
@@ -109,7 +109,7 @@ app.post('/login', csrf, async (req, res) => {
 })
 
 
-app.post('/add-dashboard-info', authMiddleware, async (req, res) => {
+app.post('/add-dashboard-info', analysisServerAuthMiddleware, async (req, res) => {
 	clients.forEach(client => client.write(`data: ${JSON.stringify(req.body)}\n\n`));
 
 	console.log("added data")
