@@ -1,26 +1,25 @@
 # SATD - Server Agent Threat Detection
 
+<img width="1908" height="1166" alt="system_design_diagram" src="https://github.com/user-attachments/assets/6e87ad43-2f4c-4958-afea-173955139746" />
+
+
+Demo:
 
 https://github.com/user-attachments/assets/1cf696a2-9753-4020-bdc4-b0919a8fbd1a
 
-
-
 SATD is a distributed, concurrent threat detection system written primarily in Go, designed to monitor and analyze activity across multiple systems in real-time. It leverages lightweight agents, a central server, a Node.js-based dashboard, and Elasticsearch for deep analytics.
 
-## 🌐 Overview
 
-SATD consists of:
+## Feature List
 
 - **Go-based Server**: A concurrent, gRPC-powered central node that ingests telemetry data from agents and performs preliminary threat detection.
 - **Go-based Agent**: A system-level daemon that observes host behavior and transmits metadata to the server.
-- **Node.js Dashboard**: A TypeScript-based UI server intended to display summaries and real-time system statuses.
+- **Node.js Dashboard**: A TypeScript-based UI server for displaying summaries and real-time system statuses across all agents.
 - **Elasticsearch (Dockerized)**: Stores logs and metadata for deep inspection and manual or automated analysis.
-
-This architecture enables scalable, real-time monitoring of networked systems with extensible data pipelines for both security analysis and operational visibility.
 
 ---
 
-## ⚙️ Technologies Used
+## Technologies Used
 
 | Component      | Tech Stack                            |
 |----------------|----------------------------------------|
@@ -34,11 +33,11 @@ This architecture enables scalable, real-time monitoring of networked systems wi
 
 ---
 
-## 🧠 How It Works
+## How It Works
 
 ### 1. Agent Behavior
 - Collects system or network metadata (e.g., process behavior, network usage).
-- Sends data to the server over a secure gRPC channel.
+- Sends data to the server over a secure TLS-encrypted gRPC channel.
 - Periodically emits heartbeat signals for liveness detection.
 
 ### 2. Server Behavior
@@ -65,7 +64,7 @@ Node v22.18.0
 npm 10.9.3+
 ```
 
-## 🗂️ Architecture Diagram
+## Architecture Diagram
 
 ```plaintext
 [Agent (Go)] ---> [gRPC] ---> [Server (Go)] ---> [ElasticSearch (Docker)]
@@ -73,9 +72,9 @@ npm 10.9.3+
                                  └--> [Dashboard (Node.js/TS)]
 ```
 
-## 🌐 Environment Configuration
+## Environment Configuration
 
-### 🔧 `./server/.server_env` Configuration
+### `./server/.server_env` Configuration
 
 ```
 ELASTIC_API_KEY=YOUR_ELASTIC_KEY
@@ -86,7 +85,7 @@ NODEJS_USER=admin
 NODEJS_PASS=YOUR_ADMIN_PASSWORD
 ```
 
-### 🔧 `./gateway/.env` Configuration
+### `./gateway/.env` Configuration
 
 ```SECRET_JWT_KEY=YOUR_JWT_KEY
 DB_USER=sleepy
