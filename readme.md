@@ -19,7 +19,6 @@ SATD consists of:
 This architecture enables scalable, real-time monitoring of networked systems with extensible data pipelines for both security analysis and operational visibility.
 
 ---
-
 ## ⚙️ Technologies Used
 
 | Component      | Tech Stack                            |
@@ -95,5 +94,8 @@ DB_NAME=satd
 DB_PASSWORD=groovy
 DB_PORT=5432
 ```
+
+
+### Usage
 
 remember not to push these env files to the repo :)

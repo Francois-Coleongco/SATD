@@ -94,7 +94,9 @@ app.post('/login', csrf, async (req, res) => {
 		return
 	}
 
-	const role: string[] = username.split("-")
+	const role: string = username.split("-")[0]
+
+	console.log(role)
 
 	const token = jsonwebtoken.sign({ username, role }, secretKey, { expiresIn: '1h' })
 
@@ -112,7 +114,7 @@ app.post('/login', csrf, async (req, res) => {
 app.post('/add-dashboard-info', analysisServerAuthMiddleware, async (req, res) => {
 	clients.forEach(client => client.write(`data: ${JSON.stringify(req.body)}\n\n`));
 
-	console.log("added data")
+	console.log("added data", req.body)
 	return res.status(200).send("SUCCESSFUL SEND DATA");
 })
 
