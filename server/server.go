@@ -66,6 +66,7 @@ type serverFeederServer struct {
 func createESIndex(utcTime string) {
 	_, err := esClient.Indices.Create(utcTime)
 
+	fmt.Println("trying to create index")
 	if err != nil {
 		log.Printf("continuing without ES index, error thrown: %s\n", err)
 	}
@@ -73,6 +74,8 @@ func createESIndex(utcTime string) {
 
 func healthCheck(agentID string, agentIP string) types.AgentInfo {
 	// check ips by querying elastic search for the day's index
+
+	fmt.Println("in health, agentIP", agentIP)
 	query := fmt.Sprintf(`{
 		"query": {
 			"bool": {
@@ -121,14 +124,16 @@ func healthCheck(agentID string, agentIP string) types.AgentInfo {
 	}
 
 	for _, hit := range r.Hits.Hits {
-		_, exists := inf.UniqueIPs[hit.Source.SrcIP]
+		fmt.Println("hit was: ", hit)
+		_, exists := inf.UniqueIPs[hit.Source.OtherIP]
 		if !exists {
-			score, err := serveranalyzer.IpCheckAbuseIPDB(hit.Source.SrcIP, &ipdbApiKey, ipdbClient)
+			score, err := serveranalyzer.IpCheckAbuseIPDB(hit.Source.OtherIP, &ipdbApiKey, ipdbClient)
 			if err != nil {
 				score = -1
 			}
 
-			inf.UniqueIPs[hit.Source.SrcIP] = score
+			inf.UniqueIPs[hit.Source.OtherIP] = score
+			log.Println("adding unique ip: ", hit.Source.OtherIP)
 
 			// should instead be a tally average to get the overall score
 			// if 0 <= score || score <= 30 {
@@ -141,7 +146,6 @@ func healthCheck(agentID string, agentIP string) types.AgentInfo {
 			// 	inf.ThreatSummary = "Unknown" // (no ipdb score)
 			// }
 
-			log.Println("adding unique ip: ", hit.Source.SrcIP)
 		}
 	}
 
@@ -261,7 +265,9 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 		}
 
 		currUtcTime := time.Now().UTC().Format("2006-01-02")
+
 		createESIndex(currUtcTime)
+
 		utcTime = currUtcTime
 
 		var packetMetaData types.PacketMeta
@@ -272,6 +278,8 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 
 		err = dec.Decode(&packetMetaData)
 
+		fmt.Println("this was dat server side: ", packetMetaData)
+
 		if err != nil {
 			log.Printf("couldn't decode netData in Feed loop, error thrown: %s\n", err)
 			continue
@@ -281,7 +289,7 @@ func (s *serverFeederServer) Feed(stream pb.ServerFeeder_FeedServer) error {
 
 		latencyLogger.Printf("%d ms", latency.Milliseconds()) // do the math of averaging after running to not interfere with latency calculations
 
-		log.Printf("%s %s, %s, %s, %s, %s, %s\n", packetMetaData.AgentID, packetMetaData.SrcIP, packetMetaData.DstIP, packetMetaData.SrcPort, packetMetaData.DstPort, packetMetaData.Protocol, packetMetaData.Timestamp)
+		log.Printf("AgentIP: %s\nAgentID: %s\nOtherIP: %s\n", packetMetaData.AgentIP, packetMetaData.AgentID, packetMetaData.OtherIP)
 
 		packetMetaData.AgentIP = agentIP
 

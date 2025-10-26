@@ -103,11 +103,11 @@ server launch:
 
 ```
 cd ./database/ && docker compose up -d
+./seeder.sh
 ```
 
 ```
-cd ./elastic-start-local/elastic-start-local/ && docker compose up -d
-./seeder.sh
+cd ./elastic-start-local/elastic-start-local/ && ./start.sh
 
 ```
 

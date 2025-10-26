@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/gob"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -97,7 +98,7 @@ func start_data_stream(client pb.ServerFeederClient) {
 
 		if netLayer != nil {
 			dstIP = netLayer.NetworkFlow().Dst().String()
-			srcIP = netLayer.NetworkFlow().Dst().String()
+			srcIP = netLayer.NetworkFlow().Src().String()
 
 			transLayer := packet.TransportLayer()
 
@@ -110,6 +111,8 @@ func start_data_stream(client pb.ServerFeederClient) {
 
 		var other_ip string
 
+		fmt.Println("hostIPAddr:", hostIPAddr)
+
 		if srcIP == hostIPAddr {
 			other_ip = dstIP
 		} else {
@@ -121,12 +124,14 @@ func start_data_stream(client pb.ServerFeederClient) {
 			AgentIP:   "", // empty since server populates this using grpc context
 			SrcIP:     srcIP,
 			DstIP:     dstIP,
+			OtherIP:   other_ip,
 			SrcPort:   srcPort,
 			DstPort:   dstPort,
 			Protocol:  protocol,
 			Timestamp: packet.Metadata().Timestamp,
 		}
 
+		fmt.Println("this was data", dat)
 		var buf bytes.Buffer
 		enc := gob.NewEncoder(&buf)
 		enc.Encode(dat)

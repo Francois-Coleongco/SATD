@@ -11,6 +11,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
 
 	try {
 		const decoded = jsonwebtoken.verify(token, String(process.env.SECRET_JWT_KEY)) as JwtPayload
+		console.log("this was decoded", decoded)
 		if (decoded.role !== "user") {
 			return res.status(401).send("INVALID TOKEN!!!!")
 		}

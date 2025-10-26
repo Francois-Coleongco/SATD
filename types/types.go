@@ -26,6 +26,7 @@ type PacketMeta struct {
 	AgentIP   string // populated on golang server
 	SrcIP     string
 	DstIP     string
+	OtherIP   string
 	SrcPort   string
 	DstPort   string
 	Protocol  string
@@ -62,6 +63,7 @@ type ESResponse struct {
 				AgentID   string `json:"AgentID"`
 				SrcIP     string `json:"SrcIP"`
 				DstIP     string `json:"DstIP"`
+				OtherIP   string `json:"OtherIP"`
 				SrcPort   string `json:"SrcPort"`
 				DstPort   string `json:"DstPort"`
 				Protocol  string `json:"Protocol"`
